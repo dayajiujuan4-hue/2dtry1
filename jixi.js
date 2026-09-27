@@ -3,42 +3,51 @@
 /*
 ============================================================
  鸡西探索录
- JIXI WORLD CONVERSION
+ JIXI WORLD CONVERSION Ver.2
 
- 武林夜市版のゲームシステムをそのまま使用し、
- 舞台設定だけを黒竜江省・鶏西市へ変更する。
+ STEP 1
+ 鸡冠区・中心大街 本格置換版
 
- IMPORTANT:
- map.js の後
- game.js の前
- に読み込むこと。
+ map.js のデータ構造を利用しながら、
+ 鶏西の街として再構成する。
 
- 内部MAP ID
- food / market / hotel / lake
- は既存システムとの互換性維持のため変更しない。
+ 読み込み順：
+
+ map.js
+ ↓
+ jixi.js
+ ↓
+ vocabulary.js
+ dialogue.js
+ game.js
+ visuals.js
+ motion.js
+ jixi-visuals.js
 ============================================================
 */
 
 
 // ============================================================
-// WORLD INFORMATION
+// WORLD
 // ============================================================
 
 const JIXI_WORLD = {
 
-  title: "鸡西探索录",
+  title:"鸡西探索录",
 
-  province: "黑龙江省",
+  province:"黑龙江省",
 
-  city: "鸡西市",
+  city:"鸡西市",
 
-  season: "冬",
+  district:"鸡冠区",
 
-  weather: "小雪",
+  season:"冬",
 
-  time: "13:42",
+  weather:"小雪",
 
-  temperature: "-12°C"
+  time:"13:42",
+
+  temperature:"-12°C"
 
 };
 
@@ -47,181 +56,585 @@ const JIXI_WORLD = {
 // HELPERS
 // ============================================================
 
-function jixiBuilding(
-  building,
+function jxBuilding(
+  x,
+  y,
+  w,
+  h,
   name,
-  color
+  color,
+  doorX,
+  target=null,
+  style="urban"
 ){
 
-  if(!building){
-    return;
-  }
+  return {
 
-  building.name = name;
+    x,
+    y,
+    w,
+    h,
 
-  if(color){
-    building.color = color;
-  }
+    name,
+
+    color,
+
+    doorX,
+
+    target,
+
+    jixiStyle:style
+
+  };
 
 }
 
 
-function jixiStall(
-  stall,
+function jxStall(
+  x,
+  y,
+  width,
   sign,
-  type
+  type="food"
 ){
 
-  if(!stall){
-    return;
-  }
+  return {
 
-  stall.sign = sign;
+    x,
+    y,
+    width,
 
-  if(type){
-    stall.type = type;
-  }
+    sign,
+
+    type,
+
+    jixi:true
+
+  };
+
+}
+
+
+function jxProp(
+  type,
+  x,
+  y,
+  extra={}
+){
+
+  return {
+
+    type,
+    x,
+    y,
+
+    ...extra
+
+  };
 
 }
 
 
 // ============================================================
 // MAP 1
-// 鸡西・中心街
+//
+// 鸡冠区・中心大街
 // ============================================================
 
 (function(){
 
-  const map = MAPS.food;
+  const map =
+    MAPS.food;
+
 
   if(!map){
     return;
   }
 
 
+  // ----------------------------------------------------------
+  // BASIC INFORMATION
+  // ----------------------------------------------------------
+
   map.name =
-    "鸡西・中心街";
+    "鸡冠区・中心大街";
 
 
   map.subtitle =
-    "冬日 · 小雪 · 东北小吃 · 城市生活";
+    "中心城区 · 商业街 · 冬日生活";
 
 
   map.ambient =
-    "winterDay";
+    "jixiDowntown";
 
 
-  // ----------------------------------------------------------
+  map.jixiArea =
+    "downtown";
+
+
+  map.jixiWinter = {
+
+    snow:true,
+
+    snowStrength:.72,
+
+    roadSnow:.30,
+
+    breath:true,
+
+    daytime:true
+
+  };
+
+
+  // ==========================================================
   // BUILDINGS
-  // ----------------------------------------------------------
+  //
+  // 旧杭州建築をすべて撤去
+  // ==========================================================
 
-  jixiBuilding(
-    map.buildings[0],
-    "老东北饭馆",
-    "#65717a"
-  );
+  map.buildings = [
 
+    // --------------------------------------------------------
+    // NORTH WEST
+    // --------------------------------------------------------
 
-  jixiBuilding(
-    map.buildings[1],
-    "鸡西大冷面",
-    "#7a6259"
-  );
+    jxBuilding(
 
+      1,
+      1,
 
-  jixiBuilding(
-    map.buildings[2],
-    "北方便利店",
-    "#58727b"
-  );
+      11,
+      8,
 
+      "北方生活超市",
 
-  jixiBuilding(
-    map.buildings[3],
-    "东北家常菜",
-    "#725c55"
-  );
+      "#68757d",
 
+      7,
 
-  jixiBuilding(
-    map.buildings[4],
-    "冬日杂货铺",
-    "#66615d"
-  );
+      "convenience",
+
+      "supermarket"
+
+    ),
 
 
-  jixiBuilding(
-    map.buildings[5],
-    "鸡西特产",
-    "#66717d"
-  );
+    // --------------------------------------------------------
+    // NORTH EAST
+    // --------------------------------------------------------
+
+    jxBuilding(
+
+      40,
+      1,
+
+      11,
+      8,
+
+      "鸡西大冷面",
+
+      "#79665c",
+
+      45,
+
+      "noodle",
+
+      "coldNoodle"
+
+    ),
 
 
-  // ----------------------------------------------------------
-  // STALLS
-  // ----------------------------------------------------------
+    // --------------------------------------------------------
+    // MID WEST
+    // --------------------------------------------------------
 
-  const stalls =
-    map.stalls || [];
+    jxBuilding(
+
+      1,
+      15,
+
+      11,
+      9,
+
+      "东北家常菜",
+
+      "#71605a",
+
+      7,
+
+      "restaurant",
+
+      "restaurant"
+
+    ),
 
 
-  const stallData = [
+    // --------------------------------------------------------
+    // MID EAST
+    // --------------------------------------------------------
 
-    ["烤冷面","food"],
+    jxBuilding(
 
-    ["锅包肉","food"],
+      40,
+      15,
 
-    ["烤地瓜","food"],
+      11,
+      9,
 
-    ["煎饼果子","food"],
+      "冬日便利店",
 
-    ["炸串","shaokao"],
+      "#58727a",
 
-    ["东北小吃","food"],
+      45,
 
-    ["烤鱿鱼","shaokao"],
+      "tea",
 
-    ["鸡架","food"],
+      "convenience"
 
-    ["冻梨","fruit"],
+    ),
 
-    ["糖葫芦","fruit"],
 
-    ["烤串","shaokao"],
+    // --------------------------------------------------------
+    // SOUTH WEST
+    //
+    // 生活感を出す低層商業建築
+    // --------------------------------------------------------
 
-    ["热豆浆","drink"],
+    jxBuilding(
 
-    ["奶茶","drink"],
+      1,
+      31,
 
-    ["烤肠","food"]
+      10,
+      6,
+
+      "百姓药房",
+
+      "#63736c",
+
+      6,
+
+      null,
+
+      "pharmacy"
+
+    ),
+
+
+    // --------------------------------------------------------
+    // SOUTH EAST
+    // --------------------------------------------------------
+
+    jxBuilding(
+
+      41,
+      31,
+
+      10,
+      6,
+
+      "手机维修",
+
+      "#626b79",
+
+      46,
+
+      null,
+
+      "phoneShop"
+
+    )
 
   ];
 
 
-  for(
-    let i=0;
-    i<stalls.length &&
-    i<stallData.length;
-    i++
+
+  // ==========================================================
+  // STALLS
+  //
+  // 中心大街なので夜市ほど大量には置かない。
+  // ==========================================================
+
+  map.stalls = [
+
+    jxStall(
+      15,
+      7,
+      3,
+      "烤冷面",
+      "food"
+    ),
+
+
+    jxStall(
+      34,
+      7,
+      3,
+      "烤地瓜",
+      "food"
+    ),
+
+
+    jxStall(
+      15,
+      22,
+      3,
+      "糖葫芦",
+      "fruit"
+    ),
+
+
+    jxStall(
+      34,
+      22,
+      3,
+      "热豆浆",
+      "drink"
+    ),
+
+
+    jxStall(
+      15,
+      32,
+      3,
+      "热饮",
+      "drink"
+    ),
+
+
+    jxStall(
+      34,
+      32,
+      3,
+      "烤串",
+      "shaokao"
+    )
+
+  ];
+
+
+
+  // ==========================================================
+  // PROPS
+  //
+  // 杭州の植木・提灯中心から
+  // 冬の都市生活へ変更
+  // ==========================================================
+
+  map.props = [
+
+    // --------------------------------------------------------
+    // BUS STOP
+    // --------------------------------------------------------
+
+    jxProp(
+      "busStop",
+      20,
+      5,
+      {
+        text:"中心大街"
+      }
+    ),
+
+
+    jxProp(
+      "busStop",
+      31,
+      27,
+      {
+        text:"中心大街"
+      }
+    ),
+
+
+    // --------------------------------------------------------
+    // PARKED CARS
+    // --------------------------------------------------------
+
+    jxProp(
+      "car",
+      23,
+      5,
+      {
+        direction:"down"
+      }
+    ),
+
+
+    jxProp(
+      "taxi",
+      28,
+      12,
+      {
+        direction:"up"
+      }
+    ),
+
+
+    jxProp(
+      "car",
+      24,
+      26,
+      {
+        direction:"down"
+      }
+    ),
+
+
+    jxProp(
+      "car",
+      30,
+      33,
+      {
+        direction:"up"
+      }
+    ),
+
+
+    // --------------------------------------------------------
+    // BICYCLES / SCOOTERS
+    // --------------------------------------------------------
+
+    jxProp(
+      "bike",
+      12,
+      12
+    ),
+
+
+    jxProp(
+      "scooter",
+      39,
+      12
+    ),
+
+
+    jxProp(
+      "scooter",
+      12,
+      28
+    ),
+
+
+    // --------------------------------------------------------
+    // STREET FURNITURE
+    // --------------------------------------------------------
+
+    jxProp(
+      "streetlight",
+      19,
+      9
+    ),
+
+
+    jxProp(
+      "streetlight",
+      33,
+      9
+    ),
+
+
+    jxProp(
+      "streetlight",
+      19,
+      24
+    ),
+
+
+    jxProp(
+      "streetlight",
+      33,
+      24
+    ),
+
+
+    jxProp(
+      "streetlight",
+      19,
+      34
+    ),
+
+
+    jxProp(
+      "streetlight",
+      33,
+      34
+    ),
+
+
+    // --------------------------------------------------------
+    // SNOW / CITY DETAILS
+    // --------------------------------------------------------
+
+    jxProp(
+      "trash",
+      13,
+      18
+    ),
+
+
+    jxProp(
+      "deliveryBox",
+      38,
+      18
+    ),
+
+
+    jxProp(
+      "priceBoard",
+      13,
+      7
+    ),
+
+
+    jxProp(
+      "crate",
+      38,
+      22
+    ),
+
+
+    jxProp(
+      "manhole",
+      25,
+      18
+    ),
+
+
+    jxProp(
+      "manhole",
+      29,
+      29
+    )
+
+  ];
+
+
+
+  // ==========================================================
+  // LANTERNS
+  // ==========================================================
+
+  /*
+  杭州夜市の横断提灯は完全撤去。
+  */
+
+  map.lanternRows = [];
+
+
+
+  // ==========================================================
+  // EXIT
+  // ==========================================================
+
+  if(
+    map.exits &&
+    map.exits[0]
   ){
 
-    jixiStall(
-      stalls[i],
-      stallData[i][0],
-      stallData[i][1]
-    );
-
-  }
-
-
-  // ----------------------------------------------------------
-  // EXIT
-  // ----------------------------------------------------------
-
-  if(map.exits?.[0]){
-
     map.exits[0].label =
-      "↓ 东北市场";
+      "↓ 园林路・南山早市";
 
   }
 
@@ -229,9 +642,11 @@ function jixiStall(
 })();
 
 
+
 // ============================================================
 // MAP 2
-// 东北市场・生活街
+//
+// 次の本格改修までは現在構造を維持
 // ============================================================
 
 (function(){
@@ -246,120 +661,64 @@ function jixiStall(
 
 
   map.name =
-    "东北市场・生活街";
+    "园林路・南山早市";
 
 
   map.subtitle =
-    "市场 · 冬装 · 冻货 · 市井生活";
+    "早市 · 冷面 · 辣菜 · 市井生活";
 
 
   map.ambient =
     "winterMarket";
 
 
-  // ----------------------------------------------------------
-  // BUILDINGS
-  // ----------------------------------------------------------
-
-  jixiBuilding(
-    map.buildings[0],
-    "鸡西百货",
-    "#66707a"
-  );
+  map.jixiArea =
+    "market";
 
 
-  jixiBuilding(
-    map.buildings[1],
-    "黑龙江特产",
-    "#6f6a72"
-  );
+  map.jixiWinter = {
+
+    snow:true,
+
+    snowStrength:.82,
+
+    roadSnow:.48,
+
+    breath:true,
+
+    daytime:true
+
+  };
 
 
-  jixiBuilding(
-    map.buildings[2],
-    "冬装商店",
-    "#73646e"
-  );
-
-
-  jixiBuilding(
-    map.buildings[3],
-    "热饮店",
-    "#59716f"
-  );
-
-
-  // ----------------------------------------------------------
-  // STALLS
-  // ----------------------------------------------------------
-
-  const stalls =
-    map.stalls || [];
-
-
-  const stallData = [
-
-    ["冻梨","fruit"],
-
-    ["冻柿子","fruit"],
-
-    ["山货","food"],
-
-    ["干货","food"],
-
-    ["棉帽","goods"],
-
-    ["手套","goods"],
-
-    ["糖葫芦","fruit"],
-
-    ["热饮","drink"]
-
-  ];
-
-
-  for(
-    let i=0;
-    i<stalls.length &&
-    i<stallData.length;
-    i++
+  if(
+    map.exits?.[0]
   ){
 
-    jixiStall(
-      stalls[i],
-      stallData[i][0],
-      stallData[i][1]
-    );
-
-  }
-
-
-  // ----------------------------------------------------------
-  // EXITS
-  // ----------------------------------------------------------
-
-  if(map.exits?.[0]){
-
     map.exits[0].label =
-      "↑ 鸡西中心街";
+      "↑ 鸡冠区・中心大街";
 
   }
 
 
-  if(map.exits?.[1]){
+  if(
+    map.exits?.[1]
+  ){
 
     map.exits[1].label =
-      "↓ 鸡西站方向";
+      "↓ 鸡西站";
 
   }
 
+
+  map.lanternRows = [];
 
 })();
 
 
+
 // ============================================================
 // MAP 3
-// 鸡西站・站前街
 // ============================================================
 
 (function(){
@@ -374,85 +733,49 @@ function jixiStall(
 
 
   map.name =
-    "鸡西站・站前街";
+    "鸡西站・煤城街区";
 
 
   map.subtitle =
-    "车站 · 出租车 · 旅馆 · 冬日街景";
+    "火车站 · 煤城记忆 · 城市生活";
 
 
   map.ambient =
     "winterStation";
 
 
-  // ----------------------------------------------------------
-  // BUILDINGS
-  // ----------------------------------------------------------
-
-  jixiBuilding(
-    map.buildings[0],
-    "鸡西宾馆",
-    "#626d78"
-  );
+  map.jixiArea =
+    "station";
 
 
-  jixiBuilding(
-    map.buildings[1],
-    "站前旅馆",
-    "#6d6874"
-  );
+  map.jixiWinter = {
+
+    snow:true,
+
+    snowStrength:.65,
+
+    roadSnow:.28,
+
+    breath:true,
+
+    daytime:true
+
+  };
 
 
-  jixiBuilding(
-    map.buildings[2],
-    "站前便利店",
-    "#5a737a"
-  );
-
-
-  // ----------------------------------------------------------
-  // STALLS
-  // ----------------------------------------------------------
-
-  const stalls =
-    map.stalls || [];
-
-
-  if(stalls[0]){
-
-    jixiStall(
-      stalls[0],
-      "热汤",
-      "food"
-    );
-
-  }
-
-
-  if(stalls[1]){
-
-    jixiStall(
-      stalls[1],
-      "热咖啡",
-      "drink"
-    );
-
-  }
-
-
-  // ----------------------------------------------------------
-  // EXITS
-  // ----------------------------------------------------------
-
-  if(map.exits?.[0]){
+  if(
+    map.exits?.[0]
+  ){
 
     map.exits[0].label =
-      "↑ 东北市场";
+      "↑ 园林路";
 
   }
 
 
-  if(map.exits?.[1]){
+  if(
+    map.exits?.[1]
+  ){
 
     map.exits[1].label =
       "↓ 前往兴凯湖";
@@ -460,12 +783,14 @@ function jixiStall(
   }
 
 
+  map.lanternRows = [];
+
 })();
+
 
 
 // ============================================================
 // MAP 4
-// 兴凯湖・冬景
 // ============================================================
 
 (function(){
@@ -480,70 +805,41 @@ function jixiStall(
 
 
   map.name =
-    "兴凯湖・冬景";
+    "兴凯湖・冰雪湖岸";
 
 
   map.subtitle =
-    "冰雪 · 湖岸 · 寒风 · 黑龙江的冬天";
+    "冰湖 · 雪原 · 寒风 · 北国风景";
 
 
   map.ambient =
     "winterLake";
 
 
-  // ----------------------------------------------------------
-  // BUILDINGS
-  // ----------------------------------------------------------
-
-  jixiBuilding(
-    map.buildings[0],
-    "湖畔暖屋",
-    "#66706f"
-  );
+  map.jixiArea =
+    "xingkai";
 
 
-  jixiBuilding(
-    map.buildings[1],
-    "兴凯湖特产",
-    "#65727c"
-  );
+  map.jixiWinter = {
+
+    snow:true,
+
+    snowStrength:1,
+
+    roadSnow:.8,
+
+    breath:true,
+
+    daytime:true,
+
+    frozenLake:true
+
+  };
 
 
-  // ----------------------------------------------------------
-  // STALLS
-  // ----------------------------------------------------------
-
-  const stalls =
-    map.stalls || [];
-
-
-  if(stalls[0]){
-
-    jixiStall(
-      stalls[0],
-      "糖葫芦",
-      "fruit"
-    );
-
-  }
-
-
-  if(stalls[1]){
-
-    jixiStall(
-      stalls[1],
-      "纪念品",
-      "goods"
-    );
-
-  }
-
-
-  // ----------------------------------------------------------
-  // EXIT
-  // ----------------------------------------------------------
-
-  if(map.exits?.[0]){
+  if(
+    map.exits?.[0]
+  ){
 
     map.exits[0].label =
       "↑ 返回鸡西市区";
@@ -551,11 +847,14 @@ function jixiStall(
   }
 
 
+  map.lanternRows = [];
+
 })();
 
 
+
 // ============================================================
-// INTERIOR HELPER
+// INTERIORS
 // ============================================================
 
 function jixiInterior(
@@ -582,29 +881,36 @@ function jixiInterior(
     subtitle;
 
 
-  if(theme){
+  map.theme =
+    theme;
 
-    map.theme =
-      theme;
 
-  }
+  map.jixiWinter = {
+
+    indoor:true,
+
+    warm:true,
+
+    snow:false
+
+  };
 
 }
 
 
-// ============================================================
-// CENTER AREA INTERIORS
-// ============================================================
+// ------------------------------------------------------------
+// DOWNTOWN
+// ------------------------------------------------------------
 
 jixiInterior(
 
-  "tea",
+  "convenience",
 
-  "老东北饭馆",
+  "北方生活超市",
 
-  "暖气与饭菜香气包围着小小的饭馆",
+  "外面飘着雪，店里暖气很足",
 
-  "northeastRestaurant"
+  "winterStore"
 
 );
 
@@ -615,22 +921,9 @@ jixiInterior(
 
   "鸡西大冷面",
 
-  "冷面、辣菜与热气腾腾的后厨",
+  "冷面与辣菜是这里最熟悉的味道",
 
   "coldNoodle"
-
-);
-
-
-jixiInterior(
-
-  "convenience",
-
-  "北方便利店",
-
-  "门外是冰雪，店内却十分温暖",
-
-  "winterStore"
 
 );
 
@@ -641,16 +934,29 @@ jixiInterior(
 
   "东北家常菜",
 
-  "锅里冒着热气，食客们围桌而坐",
+  "锅里冒着热气，客人围桌吃饭",
 
   "northeastRestaurant"
 
 );
 
 
-// ============================================================
-// MARKET INTERIORS
-// ============================================================
+jixiInterior(
+
+  "tea",
+
+  "冬日便利店",
+
+  "推门进来，眼镜一下蒙上了白雾",
+
+  "winterStore"
+
+);
+
+
+// ------------------------------------------------------------
+// MARKET
+// ------------------------------------------------------------
 
 jixiInterior(
 
@@ -658,7 +964,7 @@ jixiInterior(
 
   "鸡西百货",
 
-  "冬装、日用品和生活用品整齐陈列",
+  "冬装和生活用品摆满货架",
 
   "winterDepartment"
 
@@ -671,7 +977,7 @@ jixiInterior(
 
   "黑龙江特产",
 
-  "来自黑土地的土特产摆满货架",
+  "山货与地方特产摆在店里",
 
   "heilongjiangGoods"
 
@@ -684,7 +990,7 @@ jixiInterior(
 
   "冬装商店",
 
-  "棉帽、围巾与厚手套挂满墙面",
+  "棉帽、围巾和手套挂满墙面",
 
   "winterClothes"
 
@@ -697,16 +1003,16 @@ jixiInterior(
 
   "热饮店",
 
-  "玻璃窗上蒙着一层薄薄的水汽",
+  "窗户上凝结着一层白雾",
 
   "hotDrink"
 
 );
 
 
-// ============================================================
-// STATION INTERIORS
-// ============================================================
+// ------------------------------------------------------------
+// STATION
+// ------------------------------------------------------------
 
 jixiInterior(
 
@@ -714,7 +1020,7 @@ jixiInterior(
 
   "鸡西宾馆",
 
-  "旅客拖着行李从雪地走进温暖大厅",
+  "旅客拖着行李走进温暖大厅",
 
   "winterHotel"
 
@@ -727,7 +1033,7 @@ jixiInterior(
 
   "站前旅馆",
 
-  "窗外可以看到白雪覆盖的街道",
+  "窗外是积雪覆盖的站前街",
 
   "winterHotel"
 
@@ -747,9 +1053,9 @@ jixiInterior(
 );
 
 
-// ============================================================
-// LAKE INTERIORS
-// ============================================================
+// ------------------------------------------------------------
+// XINGKAI LAKE
+// ------------------------------------------------------------
 
 jixiInterior(
 
@@ -757,7 +1063,7 @@ jixiInterior(
 
   "湖畔暖屋",
 
-  "透过结霜的窗户可以看到兴凯湖",
+  "结霜的窗外是一望无际的冰湖",
 
   "winterLakeHouse"
 
@@ -770,220 +1076,38 @@ jixiInterior(
 
   "兴凯湖特产",
 
-  "湖区纪念品与黑龙江特产陈列在店内",
+  "湖区特产与纪念品陈列在店内",
 
   "xingkaiGoods"
 
 );
 
 
-// ============================================================
-// REMOVE HANGZHOU LANTERN ROWS
-// ============================================================
-
-for(
-  const mapId
-  of [
-    "food",
-    "market",
-    "hotel",
-    "lake"
-  ]
-){
-
-  const map =
-    MAPS[mapId];
-
-
-  if(!map){
-    continue;
-  }
-
-
-  /*
-    元の夜市の提灯列を無効化。
-
-    配列自体は残すことで
-    visuals.js / game.js 側との互換性を維持する。
-  */
-
-  map.lanternRows = [];
-
-}
-
 
 // ============================================================
-// WINTER MAP SETTINGS
-// ============================================================
-
-MAPS.food.jixiWinter = {
-
-  snow:true,
-
-  snowStrength:0.72,
-
-  roadSnow:0.34,
-
-  breath:true,
-
-  daytime:true
-
-};
-
-
-MAPS.market.jixiWinter = {
-
-  snow:true,
-
-  snowStrength:0.82,
-
-  roadSnow:0.48,
-
-  breath:true,
-
-  daytime:true
-
-};
-
-
-MAPS.hotel.jixiWinter = {
-
-  snow:true,
-
-  snowStrength:0.65,
-
-  roadSnow:0.28,
-
-  breath:true,
-
-  daytime:true
-
-};
-
-
-MAPS.lake.jixiWinter = {
-
-  snow:true,
-
-  snowStrength:1.0,
-
-  roadSnow:0.80,
-
-  breath:true,
-
-  daytime:true,
-
-  frozenLake:true
-
-};
-
-
-// ============================================================
-// INTERIOR WINTER SETTINGS
-// ============================================================
-
-const JIXI_INTERIORS = [
-
-  "tea",
-
-  "noodle",
-
-  "convenience",
-
-  "restaurant",
-
-  "department",
-
-  "culture",
-
-  "accessory",
-
-  "drink",
-
-  "wulinHotel",
-
-  "hangzhouHotel",
-
-  "cityStore",
-
-  "lakeTea",
-
-  "lakeGift"
-
-];
-
-
-for(
-  const id
-  of JIXI_INTERIORS
-){
-
-  if(!MAPS[id]){
-    continue;
-  }
-
-
-  MAPS[id].jixiWinter = {
-
-    indoor:true,
-
-    warm:true,
-
-    snow:false
-
-  };
-
-}
-
-
-// ============================================================
-// JIXI MAP FLAGS
-// ============================================================
-
-MAPS.food.jixiArea =
-  "downtown";
-
-
-MAPS.market.jixiArea =
-  "market";
-
-
-MAPS.hotel.jixiArea =
-  "station";
-
-
-MAPS.lake.jixiArea =
-  "xingkai";
-
-
-// ============================================================
-// BODY CLASS
+// PAGE
 // ============================================================
 
 if(
-  typeof document !== "undefined" &&
-  document.body
-){
-
-  document.body.classList.add(
-    "jixi-version"
-  );
-
-}
-
-
-// ============================================================
-// PAGE TITLE
-// ============================================================
-
-if(
-  typeof document !== "undefined"
+  typeof document!=="undefined"
 ){
 
   document.title =
     "鸡西探索录 - 黑龙江的冬";
 
+
+  if(
+    document.body
+  ){
+
+    document.body.classList.add(
+      "jixi-version"
+    );
+
+  }
+
 }
+
 
 
 // ============================================================
@@ -991,5 +1115,5 @@ if(
 // ============================================================
 
 console.log(
-  "鸡西探索录 - World Conversion loaded"
+  "鸡西探索录 World Conversion Ver.2 loaded"
 );
