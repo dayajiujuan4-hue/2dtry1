@@ -3,74 +3,56 @@
 /*
 ============================================================
  鸡西探索录
- JIXI WINTER VISUALS Ver.1
+ JIXI WINTER VISUALS Ver.2
 
- 武林夜市 Visual Enhancement Ver.4 を壊さず、
- その上から「黒竜江・鶏西の冬」を描画する。
+ 「雪の杭州」から「冬の鸡西」へ。
 
- ・昼間
- ・積雪
- ・除雪された道路
- ・雪だまり
+ ・杭州風瓦屋根を視覚的に置換
+ ・東北地方の中層都市建築
+ ・集合住宅＋1階店舗
+ ・連続する中国語店招
+ ・鸡西大冷面館
+ ・スーパー
+ ・薬局
+ ・スマホ修理店
+ ・東北料理店
+ ・雪庇 / つらら
+ ・暖房煙
+ ・凍結路面
  ・轍
- ・屋根雪
- ・つらら
+ ・積雪
+ ・昼間の寒色光
  ・降雪
- ・暖房の煙
- ・凍結した湖
- ・冬の空気感
 
- IMPORTANT
-
- index.html:
-
- map.js
- jixi.js
- vocabulary.js
- dialogue.js
- game.js
- visuals.js
- motion.js
- jixi-visuals.js
- learning.js
- dialect.js
-
- の順番で読み込む。
+ gameplay / collision には触れない。
 ============================================================
 */
 
 
 // ============================================================
-// ORIGINAL FUNCTIONS
+// ORIGINALS
 // ============================================================
 
-const JX_originalDrawMap =
+const JXV2_drawMap =
   drawMap;
 
-const JX_originalDraw =
+const JXV2_draw =
   draw;
 
-const JX_originalDrawBuildings =
+const JXV2_drawBuildings =
   drawBuildings;
 
-const JX_originalDrawStalls =
+const JXV2_drawStalls =
   drawStalls;
 
 
 // ============================================================
-// BASIC HELPERS
+// HELPERS
 // ============================================================
 
-function jxRect(
-  x,
-  y,
-  w,
-  h,
-  color
-){
+function j2rect(x,y,w,h,color){
 
-  ctx.fillStyle =
-    color;
+  ctx.fillStyle=color;
 
   ctx.fillRect(
     Math.floor(x),
@@ -82,33 +64,28 @@ function jxRect(
 }
 
 
-function jxLine(
-  x1,
-  y1,
-  x2,
-  y2,
+function j2line(
+  x1,y1,
+  x2,y2,
   color,
   width=1
 ){
 
   ctx.save();
 
-  ctx.strokeStyle =
-    color;
-
-  ctx.lineWidth =
-    width;
+  ctx.strokeStyle=color;
+  ctx.lineWidth=width;
 
   ctx.beginPath();
 
   ctx.moveTo(
-    Math.floor(x1)+0.5,
-    Math.floor(y1)+0.5
+    Math.floor(x1)+.5,
+    Math.floor(y1)+.5
   );
 
   ctx.lineTo(
-    Math.floor(x2)+0.5,
-    Math.floor(y2)+0.5
+    Math.floor(x2)+.5,
+    Math.floor(y2)+.5
   );
 
   ctx.stroke();
@@ -118,90 +95,119 @@ function jxLine(
 }
 
 
-function jxHash(
-  x,
-  y,
-  salt=0
-){
+function j2hash(x,y,salt=0){
 
   let n =
     Math.imul(
-      x + salt*31,
+      x+salt*37,
       374761393
-    ) +
+    )+
 
     Math.imul(
-      y + salt*17,
+      y+salt*19,
       668265263
     );
 
   n =
-    (n ^ (n >>> 13)) >>> 0;
+    (n^(n>>>13))>>>0;
 
-  return (
-    n % 1000
-  ) / 1000;
+  return (n%1000)/1000;
 
 }
 
 
-function jxMap(){
+function j2map(){
 
   return getCurrentMap();
 
 }
 
 
-function jxIsOutdoor(){
+function j2Outdoor(){
 
-  const map =
-    jxMap();
+  const m=j2map();
 
   return !!(
-    map &&
-    map.jixiWinter &&
-    !map.jixiWinter.indoor
+    m &&
+    m.jixiWinter &&
+    !m.jixiWinter.indoor
   );
 
 }
 
 
-function jxIsIndoor(){
+function j2Indoor(){
 
-  const map =
-    jxMap();
+  const m=j2map();
 
   return !!(
-    map &&
-    map.jixiWinter &&
-    map.jixiWinter.indoor
+    m &&
+    m.jixiWinter &&
+    m.jixiWinter.indoor
   );
 
 }
 
 
 // ============================================================
-// SNOW PARTICLES
+// TEXT
 // ============================================================
 
-const JX_SNOW_COUNT = 190;
-
-const jxSnowflakes = [];
-
-
-for(
-  let i=0;
-  i<JX_SNOW_COUNT;
-  i++
+function j2Text(
+  text,
+  x,
+  y,
+  size=12,
+  color="#f5f3eb",
+  align="center"
 ){
 
-  jxSnowflakes.push({
+  ctx.save();
 
-    x:
-      Math.random()*canvas.width,
+  ctx.imageSmoothingEnabled=false;
 
-    y:
-      Math.random()*canvas.height,
+  ctx.font=
+    `bold ${size}px sans-serif`;
+
+  ctx.textAlign=align;
+
+  ctx.textBaseline="middle";
+
+  ctx.fillStyle=
+    "rgba(20,25,29,.65)";
+
+  ctx.fillText(
+    text,
+    Math.floor(x)+1,
+    Math.floor(y)+1
+  );
+
+  ctx.fillStyle=color;
+
+  ctx.fillText(
+    text,
+    Math.floor(x),
+    Math.floor(y)
+  );
+
+  ctx.restore();
+
+}
+
+
+// ============================================================
+// SNOW
+// ============================================================
+
+const J2_SNOW=[];
+
+for(let i=0;i<190;i++){
+
+  J2_SNOW.push({
+
+    x:Math.random()*canvas.width,
+
+    y:Math.random()*canvas.height,
 
     size:
       1+
@@ -211,11 +217,11 @@ for(
 
     speed:
       18+
-      Math.random()*42,
+      Math.random()*40,
 
     drift:
       5+
-      Math.random()*18,
+      Math.random()*16,
 
     phase:
       Math.random()*Math.PI*2,
@@ -229,124 +235,25 @@ for(
 
 
 // ============================================================
-// DAYLIGHT
+// MAP SNOW OVERLAY
 // ============================================================
 
-function jxDaylight(){
+drawMap=function(time){
 
-  if(
-    !jxIsOutdoor()
-  ){
+  JXV2_drawMap(time);
+
+  if(!j2Outdoor()){
     return;
   }
 
-
-  /*
-  夜景の上に単純な白ベタを乗せるのではなく、
-  screen 合成で暗部を持ち上げる。
-
-  元の描き込みを残しつつ昼へ近づける。
-  */
-
-  ctx.save();
-
-  ctx.globalCompositeOperation =
-    "screen";
-
-
-  const gradient =
-    ctx.createLinearGradient(
-      0,
-      0,
-      0,
-      canvas.height
-    );
-
-
-  gradient.addColorStop(
-    0,
-    "rgba(165,190,210,.36)"
-  );
-
-
-  gradient.addColorStop(
-    .45,
-    "rgba(155,177,194,.27)"
-  );
-
-
-  gradient.addColorStop(
-    1,
-    "rgba(116,137,151,.18)"
-  );
-
-
-  ctx.fillStyle =
-    gradient;
-
-
-  ctx.fillRect(
-    0,
-    0,
-    canvas.width,
-    canvas.height
-  );
-
-
-  ctx.restore();
-
-
-  /*
-  冬の青灰色の空気。
-  */
-
-  ctx.save();
-
-  ctx.fillStyle =
-    "rgba(178,199,211,.055)";
-
-  ctx.fillRect(
-    0,
-    0,
-    canvas.width,
-    canvas.height
-  );
-
-  ctx.restore();
-
-}
-
-
-// ============================================================
-// GROUND WRAPPER
-// ============================================================
-
-drawMap = function(time){
-
-  JX_originalDrawMap(time);
-
-
-  if(
-    !jxIsOutdoor()
-  ){
-    return;
-  }
-
-
-  jxDrawSnowGround(time);
+  j2Ground(time);
 
 };
 
 
-// ============================================================
-// SNOW GROUND
-// ============================================================
+function j2Ground(time){
 
-function jxDrawSnowGround(time){
-
-  const map =
-    jxMap();
-
+  const map=j2map();
 
   if(
     !map ||
@@ -356,151 +263,227 @@ function jxDrawSnowGround(time){
   }
 
 
-  const rows =
+  const rows=
     map.grid.length;
 
-  const cols =
+  const cols=
     map.grid[0].length;
 
 
-  const sx0 =
+  const sx0=
     Math.max(
       0,
-      Math.floor(
-        camera.x/TILE
-      )-1
+      Math.floor(camera.x/TILE)-1
     );
 
+  const sy0=
+    Math.max(
+      0,
+      Math.floor(camera.y/TILE)-1
+    );
 
-  const sx1 =
+  const sx1=
     Math.min(
       cols,
       Math.ceil(
-        (
-          camera.x+
-          canvas.width
-        )/TILE
+        (camera.x+canvas.width)/TILE
       )+1
     );
 
-
-  const sy0 =
-    Math.max(
-      0,
-      Math.floor(
-        camera.y/TILE
-      )-1
-    );
-
-
-  const sy1 =
+  const sy1=
     Math.min(
       rows,
       Math.ceil(
-        (
-          camera.y+
-          canvas.height
-        )/TILE
+        (camera.y+canvas.height)/TILE
       )+1
     );
 
 
-  for(
-    let ty=sy0;
-    ty<sy1;
-    ty++
-  ){
+  for(let ty=sy0;ty<sy1;ty++){
 
-    for(
-      let tx=sx0;
-      tx<sx1;
-      tx++
-    ){
+    for(let tx=sx0;tx<sx1;tx++){
 
-      const tile =
+      const tile=
         map.grid[ty][tx];
 
+      const x=
+        tx*TILE-camera.x;
 
-      const x =
-        tx*TILE-
-        camera.x;
+      const y=
+        ty*TILE-camera.y;
+
+      const seed=
+        j2hash(tx,ty,3);
 
 
-      const y =
-        ty*TILE-
-        camera.y;
+      // ------------------------------------------------------
+      // SNOWY PAVEMENT
+      // ------------------------------------------------------
+
+      if(tile===T.FLOOR){
+
+        j2rect(
+          x,y,TILE,TILE,
+          seed>.5
+            ? "rgba(218,227,232,.72)"
+            : "rgba(203,215,221,.70)"
+        );
 
 
-      if(
-        tile===T.FLOOR
-      ){
+        if(seed>.68){
 
-        jxSnowFloor(
-          x,
-          y,
-          tx,
-          ty
+          j2rect(
+            x+5,
+            y+7,
+            17,
+            2,
+            "rgba(249,251,252,.40)"
+          );
+
+        }
+
+
+        if(seed<.20){
+
+          j2rect(
+            x+18,
+            y+23,
+            9,
+            2,
+            "rgba(124,148,161,.18)"
+          );
+
+        }
+
+      }
+
+
+      // ------------------------------------------------------
+      // ROAD
+      // ------------------------------------------------------
+
+      else if(tile===T.ROAD){
+
+        j2rect(
+          x,y,TILE,TILE,
+          seed>.52
+            ? "rgba(79,94,103,.59)"
+            : "rgba(70,85,95,.60)"
+        );
+
+
+        if(seed>.66){
+
+          j2rect(
+            x+3,
+            y+6,
+            18,
+            3,
+            "rgba(210,219,223,.18)"
+          );
+
+        }
+
+
+        if(seed>.84){
+
+          j2rect(
+            x+8,
+            y+18,
+            18,
+            2,
+            "rgba(190,219,229,.18)"
+          );
+
+        }
+
+      }
+
+
+      // ------------------------------------------------------
+      // PLAZA
+      // ------------------------------------------------------
+
+      else if(tile===T.PLAZA){
+
+        j2rect(
+          x,y,TILE,TILE,
+          "rgba(198,211,218,.60)"
+        );
+
+        ctx.strokeStyle=
+          "rgba(110,133,146,.13)";
+
+        ctx.strokeRect(
+          Math.floor(x)+.5,
+          Math.floor(y)+.5,
+          TILE-1,
+          TILE-1
         );
 
       }
 
 
-      else if(
-        tile===T.ROAD
-      ){
+      // ------------------------------------------------------
+      // GRASS
+      // ------------------------------------------------------
 
-        jxWinterRoad(
-          x,
-          y,
-          tx,
-          ty
+      else if(tile===T.GRASS){
+
+        j2rect(
+          x,y,TILE,TILE,
+          "rgba(217,227,230,.72)"
         );
+
+        if(seed>.58){
+
+          j2line(
+            x+9,y+27,
+            x+10,y+18,
+            "rgba(82,105,95,.25)"
+          );
+
+        }
 
       }
 
 
+      // ------------------------------------------------------
+      // XINGKAI LAKE
+      // ------------------------------------------------------
+
       else if(
-        tile===T.PLAZA
+        tile===T.WATER &&
+        map.jixiWinter?.frozenLake
       ){
 
-        jxSnowPlaza(
-          x,
-          y,
-          tx,
-          ty
+        j2rect(
+          x,y,TILE,TILE,
+          seed>.5
+            ? "rgba(157,193,209,.86)"
+            : "rgba(145,183,201,.86)"
         );
 
-      }
+
+        if(seed>.70){
+
+          j2rect(
+            x+2,
+            y+5,
+            21,
+            5,
+            "rgba(233,240,243,.35)"
+          );
+
+        }
 
 
-      else if(
-        tile===T.GRASS
-      ){
+        if(seed<.25){
 
-        jxSnowGrass(
-          x,
-          y,
-          tx,
-          ty
-        );
-
-      }
-
-
-      else if(
-        tile===T.WATER
-      ){
-
-        if(
-          map.jixiWinter?.frozenLake
-        ){
-
-          jxFrozenWater(
-            x,
-            y,
-            tx,
-            ty,
-            time
+          j2line(
+            x+4,y+22,
+            x+26,y+18,
+            "rgba(225,244,248,.35)"
           );
 
         }
@@ -512,388 +495,7 @@ function jxDrawSnowGround(time){
   }
 
 
-  jxRoadTracks();
-
-}
-
-
-// ============================================================
-// SNOW FLOOR
-// ============================================================
-
-function jxSnowFloor(
-  x,
-  y,
-  tx,
-  ty
-){
-
-  const seed =
-    jxHash(
-      tx,
-      ty,
-      2
-    );
-
-
-  jxRect(
-    x,
-    y,
-    TILE,
-    TILE,
-    seed>.5
-      ? "rgba(221,229,233,.72)"
-      : "rgba(206,217,223,.69)"
-  );
-
-
-  /*
-  青い影
-  */
-
-  jxRect(
-    x,
-    y+TILE-4,
-    TILE,
-    4,
-    "rgba(113,139,155,.12)"
-  );
-
-
-  /*
-  雪面の不規則な凹凸
-  */
-
-  if(
-    seed>.72
-  ){
-
-    jxRect(
-      x+5,
-      y+8,
-      13,
-      2,
-      "rgba(246,250,251,.44)"
-    );
-
-  }
-
-
-  if(
-    seed<.22
-  ){
-
-    jxRect(
-      x+19,
-      y+20,
-      8,
-      2,
-      "rgba(144,165,177,.16)"
-    );
-
-  }
-
-}
-
-
-// ============================================================
-// WINTER ROAD
-// ============================================================
-
-function jxWinterRoad(
-  x,
-  y,
-  tx,
-  ty
-){
-
-  const seed =
-    jxHash(
-      tx,
-      ty,
-      5
-    );
-
-
-  /*
-  除雪されたアスファルト。
-  */
-
-  jxRect(
-    x,
-    y,
-    TILE,
-    TILE,
-    seed>.55
-      ? "rgba(86,101,111,.58)"
-      : "rgba(75,91,102,.56)"
-  );
-
-
-  /*
-  薄い圧雪。
-  */
-
-  if(
-    seed>.62
-  ){
-
-    jxRect(
-      x+3,
-      y+5,
-      17,
-      4,
-      "rgba(199,210,215,.20)"
-    );
-
-  }
-
-
-  if(
-    seed<.28
-  ){
-
-    jxRect(
-      x+16,
-      y+23,
-      13,
-      3,
-      "rgba(213,221,225,.18)"
-    );
-
-  }
-
-
-  /*
-  凍結した反射。
-  */
-
-  if(
-    seed>.82
-  ){
-
-    jxRect(
-      x+5,
-      y+15,
-      19,
-      2,
-      "rgba(189,220,232,.18)"
-    );
-
-  }
-
-}
-
-
-// ============================================================
-// SNOW PLAZA
-// ============================================================
-
-function jxSnowPlaza(
-  x,
-  y,
-  tx,
-  ty
-){
-
-  const seed =
-    jxHash(
-      tx,
-      ty,
-      8
-    );
-
-
-  jxRect(
-    x,
-    y,
-    TILE,
-    TILE,
-    "rgba(204,216,222,.58)"
-  );
-
-
-  ctx.strokeStyle =
-    "rgba(118,139,150,.15)";
-
-
-  ctx.strokeRect(
-    Math.floor(x)+.5,
-    Math.floor(y)+.5,
-    TILE-1,
-    TILE-1
-  );
-
-
-  if(
-    seed>.7
-  ){
-
-    jxRect(
-      x+5,
-      y+6,
-      20,
-      2,
-      "rgba(241,246,248,.32)"
-    );
-
-  }
-
-}
-
-
-// ============================================================
-// SNOW GRASS
-// ============================================================
-
-function jxSnowGrass(
-  x,
-  y,
-  tx,
-  ty
-){
-
-  jxRect(
-    x,
-    y,
-    TILE,
-    TILE,
-    "rgba(218,228,231,.70)"
-  );
-
-
-  const seed =
-    jxHash(
-      tx,
-      ty,
-      11
-    );
-
-
-  if(
-    seed>.55
-  ){
-
-    jxLine(
-      x+8,
-      y+24,
-      x+10,
-      y+17,
-      "rgba(92,110,104,.28)"
-    );
-
-
-    jxLine(
-      x+21,
-      y+27,
-      x+20,
-      y+20,
-      "rgba(91,108,102,.22)"
-    );
-
-  }
-
-}
-
-
-// ============================================================
-// FROZEN LAKE
-// ============================================================
-
-function jxFrozenWater(
-  x,
-  y,
-  tx,
-  ty,
-  time
-){
-
-  const seed =
-    jxHash(
-      tx,
-      ty,
-      14
-    );
-
-
-  jxRect(
-    x,
-    y,
-    TILE,
-    TILE,
-    seed>.5
-      ? "rgba(165,199,213,.82)"
-      : "rgba(151,189,206,.82)"
-  );
-
-
-  /*
-  湖上の雪。
-  */
-
-  if(
-    seed>.66
-  ){
-
-    jxRect(
-      x+2,
-      y+5,
-      19,
-      5,
-      "rgba(229,238,241,.34)"
-    );
-
-  }
-
-
-  /*
-  氷の筋。
-  */
-
-  if(
-    seed<.25
-  ){
-
-    const wobble =
-      Math.sin(
-        time*.5+
-        tx
-      )*1.5;
-
-
-    jxLine(
-      x+5,
-      y+22,
-      x+25+wobble,
-      y+18,
-      "rgba(221,242,247,.36)"
-    );
-
-  }
-
-
-  if(
-    seed>.84
-  ){
-
-    jxLine(
-      x+9,
-      y+10,
-      x+17,
-      y+15,
-      "rgba(101,150,173,.22)"
-    );
-
-
-    jxLine(
-      x+17,
-      y+15,
-      x+25,
-      y+13,
-      "rgba(101,150,173,.22)"
-    );
-
-  }
+  j2Tracks();
 
 }
 
@@ -902,309 +504,528 @@ function jxFrozenWater(
 // ROAD TRACKS
 // ============================================================
 
-function jxRoadTracks(){
+function j2Tracks(){
 
-  const map =
-    jxMap();
+  /*
+  中心大街だけ強く見せる。
+  */
 
-
-  if(
-    !map ||
-    !map.jixiWinter
-  ){
+  if(currentMapId!=="food"){
     return;
   }
 
 
-  /*
-  道路を走った車の轍。
+  const center=
+    26*TILE-camera.x;
 
-  マップ座標基準なので、
-  カメラ移動にも追従する。
+
+  const tracks=[
+    center-50,
+    center-36,
+    center+36,
+    center+50
+  ];
+
+
+  for(const x of tracks){
+
+    j2line(
+      x,
+      -20,
+      x,
+      canvas.height+20,
+      "rgba(36,51,60,.18)",
+      3
+    );
+
+  }
+
+}
+
+
+// ============================================================
+// WINDOWS
+// ============================================================
+
+function j2Window(
+  x,
+  y,
+  w=16,
+  h=19,
+  lit=false
+){
+
+  /*
+  外枠
   */
 
-  const roadX =
-    26*TILE-
-    camera.x;
-
-
-  jxLine(
-    roadX-47,
-    -20,
-    roadX-47,
-    canvas.height+20,
-    "rgba(48,64,73,.16)",
-    3
+  j2rect(
+    x-2,
+    y-2,
+    w+4,
+    h+4,
+    "#3e484d"
   );
 
 
-  jxLine(
-    roadX-34,
-    -20,
-    roadX-34,
-    canvas.height+20,
-    "rgba(48,64,73,.14)",
-    3
+  /*
+  ガラス
+  */
+
+  j2rect(
+    x,
+    y,
+    w,
+    h,
+    lit
+      ? "#b8a77e"
+      : "#75909c"
   );
 
 
-  jxLine(
-    roadX+35,
-    -20,
-    roadX+35,
-    canvas.height+20,
-    "rgba(48,64,73,.14)",
-    3
+  /*
+  冬空の反射
+  */
+
+  j2rect(
+    x+2,
+    y+2,
+    w-4,
+    3,
+    "rgba(218,234,240,.32)"
   );
 
 
-  jxLine(
-    roadX+48,
-    -20,
-    roadX+48,
-    canvas.height+20,
-    "rgba(48,64,73,.16)",
-    3
+  /*
+  サッシ
+  */
+
+  j2rect(
+    x+w/2,
+    y,
+    1,
+    h,
+    "#46565d"
+  );
+
+
+  j2rect(
+    x,
+    y+h*.52,
+    w,
+    1,
+    "#46565d"
+  );
+
+
+  /*
+  窓下の積雪
+  */
+
+  j2rect(
+    x-2,
+    y+h+2,
+    w+4,
+    3,
+    "#dbe6e9"
   );
 
 }
 
 
 // ============================================================
-// BUILDINGS
+// AC UNIT
 // ============================================================
 
-drawBuildings = function(){
+function j2AC(x,y){
+
+  j2rect(
+    x,
+    y,
+    13,
+    8,
+    "#b8c0c1"
+  );
+
+  j2rect(
+    x+2,
+    y+2,
+    9,
+    1,
+    "#727e82"
+  );
+
+  j2rect(
+    x+2,
+    y+5,
+    7,
+    1,
+    "#727e82"
+  );
+
+}
+
+
+// ============================================================
+// PIPE
+// ============================================================
+
+function j2Pipe(
+  x,
+  y,
+  h
+){
+
+  j2rect(
+    x,
+    y,
+    4,
+    h,
+    "#596367"
+  );
+
+  j2rect(
+    x+1,
+    y,
+    1,
+    h,
+    "#879094"
+  );
+
+}
+
+
+// ============================================================
+// SHOP SIGN
+// ============================================================
+
+function j2ShopSign(
+  text,
+  x,
+  y,
+  w,
+  color="#8d3e36"
+){
+
+  j2rect(
+    x,
+    y,
+    w,
+    25,
+    "#293238"
+  );
+
+
+  j2rect(
+    x+2,
+    y+2,
+    w-4,
+    21,
+    color
+  );
+
+
+  j2rect(
+    x+3,
+    y+3,
+    w-6,
+    2,
+    "rgba(255,255,255,.16)"
+  );
+
+
+  j2Text(
+    text,
+    x+w/2,
+    y+13,
+    Math.min(
+      13,
+      Math.max(
+        9,
+        w/(text.length+1)
+      )
+    ),
+    "#f4eee0"
+  );
+
+}
+
+
+// ============================================================
+// SHOPFRONT
+// ============================================================
+
+function j2ShopFront(
+  x,
+  y,
+  w,
+  h,
+  sign,
+  signColor
+){
 
   /*
-  元の高密度建築をそのまま描く。
+  一階外壁
   */
 
-  JX_originalDrawBuildings();
+  j2rect(
+    x,
+    y,
+    w,
+    h,
+    "#565e60"
+  );
 
 
-  if(
-    !jxIsOutdoor()
-  ){
-    return;
-  }
+  /*
+  看板
+  */
+
+  j2ShopSign(
+    sign,
+    x+4,
+    y+4,
+    w-8,
+    signColor
+  );
 
 
-  const map =
-    jxMap();
+  /*
+  ガラス
+  */
+
+  j2rect(
+    x+7,
+    y+34,
+    w-14,
+    h-40,
+    "#45636e"
+  );
 
 
-  for(
-    const b of
-    map.buildings || []
-  ){
-
-    const x =
-      b.x*TILE-
-      camera.x;
-
-
-    const y =
-      b.y*TILE-
-      camera.y;
+  j2rect(
+    x+9,
+    y+36,
+    w-18,
+    3,
+    "rgba(210,230,236,.25)"
+  );
 
 
-    const w =
-      b.w*TILE;
+  /*
+  店内の暖色
+  */
+
+  j2rect(
+    x+11,
+    y+44,
+    w-22,
+    h-52,
+    "rgba(194,145,84,.25)"
+  );
 
 
-    const h =
-      b.h*TILE;
+  /*
+  ドア
+  */
 
-
-    if(
-      x>canvas.width+100 ||
-      y>canvas.height+100 ||
-      x+w<-100 ||
-      y+h<-100
-    ){
-      continue;
-    }
-
-
-    jxBuildingSnow(
-      b,
-      x,
-      y,
-      w,
-      h
+  const doorW=
+    Math.min(
+      24,
+      w*.28
     );
 
-  }
 
-};
+  const dx=
+    x+w/2-doorW/2;
+
+
+  j2rect(
+    dx,
+    y+h-39,
+    doorW,
+    35,
+    "#33474e"
+  );
+
+
+  j2rect(
+    dx+3,
+    y+h-35,
+    doorW-6,
+    18,
+    "#7897a1"
+  );
+
+
+  j2rect(
+    dx+doorW-6,
+    y+h-19,
+    2,
+    2,
+    "#d4c39b"
+  );
+
+
+  /*
+  店頭の雪
+  */
+
+  j2rect(
+    x,
+    y+h-5,
+    w,
+    7,
+    "#dbe6e9"
+  );
+
+}
 
 
 // ============================================================
-// BUILDING SNOW
+// GENERIC JIXI URBAN BUILDING
 // ============================================================
 
-function jxBuildingSnow(
+function j2UrbanBuilding(
   b,
   x,
   y,
   w,
-  h
+  h,
+  options={}
 ){
 
-  /*
-  屋根の積雪。
+  const {
 
-  元の屋根形状を完全に消さず、
-  上側だけに雪を置く。
-  */
+    wall="#70777a",
 
-  ctx.save();
+    side="#5b6265",
 
+    floors=4,
 
-  ctx.fillStyle =
-    "rgba(230,238,241,.96)";
+    sign=b.name,
 
+    signColor="#76504a",
 
-  ctx.beginPath();
+    shop=true,
 
+    ac=true,
 
-  ctx.moveTo(
-    x-10,
-    y+10
-  );
+    pipes=true
+
+  }=options;
 
 
-  ctx.lineTo(
-    x+w+10,
-    y+10
-  );
+  // ----------------------------------------------------------
+  // SHADOW
+  // ----------------------------------------------------------
 
-
-  ctx.lineTo(
-    x+w+2,
-    y+23
-  );
-
-
-  ctx.lineTo(
-    x-3,
-    y+23
-  );
-
-
-  ctx.closePath();
-
-  ctx.fill();
-
-
-  /*
-  雪の明るい上面。
-  */
-
-  jxRect(
-    x,
-    y+7,
+  j2rect(
+    x+8,
+    y+12,
     w,
-    5,
-    "rgba(248,251,252,.94)"
+    h,
+    "rgba(25,32,36,.35)"
   );
 
 
-  /*
-  屋根端の青い雪影。
-  */
+  // ----------------------------------------------------------
+  // BODY
+  // ----------------------------------------------------------
 
-  jxRect(
-    x-3,
-    y+21,
-    w+6,
-    3,
-    "rgba(135,160,176,.42)"
+  j2rect(
+    x,
+    y,
+    w,
+    h,
+    wall
   );
 
 
-  /*
-  不規則な積雪。
-  */
+  // ----------------------------------------------------------
+  // SIDE SHADE
+  // ----------------------------------------------------------
+
+  j2rect(
+    x+w-13,
+    y,
+    13,
+    h,
+    side
+  );
+
+
+  // ----------------------------------------------------------
+  // CONCRETE LINES
+  // ----------------------------------------------------------
 
   for(
-    let px=x+13;
-    px<x+w-12;
-    px+=34
+    let yy=y+10;
+    yy<y+h-70;
+    yy+=32
   ){
 
-    const n =
-      jxHash(
-        Math.floor(px),
-        Math.floor(y),
-        21
-      );
-
-
-    const sw =
-      12+
-      Math.floor(
-        n*17
-      );
-
-
-    jxRect(
-      px,
-      y+4+
-      n*3,
-      sw,
-      5,
-      "rgba(242,247,249,.88)"
+    j2rect(
+      x,
+      yy,
+      w-13,
+      1,
+      "rgba(44,51,54,.18)"
     );
 
   }
 
 
-  /*
-  つらら。
-  */
+  // ----------------------------------------------------------
+  // WINDOWS
+  // ----------------------------------------------------------
 
-  for(
-    let px=x+19;
-    px<x+w-15;
-    px+=51
-  ){
-
-    const n =
-      jxHash(
-        Math.floor(px),
-        Math.floor(y),
-        33
-      );
+  const upperHeight=
+    Math.max(
+      50,
+      h-75
+    );
 
 
-    if(
-      n>.35
+  const floorGap=
+    Math.max(
+      26,
+      upperHeight/floors
+    );
+
+
+  for(let f=0;f<floors;f++){
+
+    const wy=
+      y+17+
+      f*floorGap;
+
+
+    if(wy>y+h-77){
+      break;
+    }
+
+
+    for(
+      let wx=x+18;
+      wx<x+w-35;
+      wx+=43
     ){
 
-      const length =
-        5+
-        Math.floor(
-          n*10
+      const seed=
+        j2hash(
+          Math.floor(wx),
+          Math.floor(wy),
+          20+f
         );
 
 
-      jxRect(
-        px,
-        y+23,
-        2,
-        length,
-        "rgba(190,221,232,.72)"
-      );
-
-
-      jxRect(
-        px+1,
-        y+23,
-        1,
-        length-2,
-        "rgba(242,251,253,.70)"
+      j2Window(
+        wx,
+        wy,
+        17,
+        18,
+        seed>.84
       );
 
     }
@@ -1212,18 +1033,193 @@ function jxBuildingSnow(
   }
 
 
-  /*
-  建物の足元にも雪。
-  */
+  // ----------------------------------------------------------
+  // AIR CONDITIONERS
+  // ----------------------------------------------------------
 
-  jxSnowBank(
-    x-3,
-    y+h-5,
-    w+6
+  if(ac){
+
+    for(
+      let yy=y+42;
+      yy<y+h-100;
+      yy+=64
+    ){
+
+      j2AC(
+        x+w-34,
+        yy
+      );
+
+    }
+
+  }
+
+
+  // ----------------------------------------------------------
+  // HEATING / DRAIN PIPE
+  // ----------------------------------------------------------
+
+  if(pipes){
+
+    j2Pipe(
+      x+8,
+      y+18,
+      Math.max(
+        20,
+        h-91
+      )
+    );
+
+  }
+
+
+  // ----------------------------------------------------------
+  // SHOP
+  // ----------------------------------------------------------
+
+  if(shop){
+
+    j2ShopFront(
+      x+5,
+      y+h-69,
+      w-23,
+      67,
+      sign,
+      signColor
+    );
+
+  }
+
+
+  // ----------------------------------------------------------
+  // SNOW ROOF
+  // ----------------------------------------------------------
+
+  j2SnowRoof(
+    x,
+    y,
+    w
   );
 
 
-  ctx.restore();
+  // ----------------------------------------------------------
+  // SNOW BANK
+  // ----------------------------------------------------------
+
+  j2SnowBank(
+    x-3,
+    y+h-7,
+    w+5
+  );
+
+}
+
+
+// ============================================================
+// SNOW ROOF
+// ============================================================
+
+function j2SnowRoof(
+  x,
+  y,
+  w
+){
+
+  /*
+  重要：
+  中国南方風の勾配瓦屋根は描かない。
+
+  東北の都市建築らしく
+  フラットルーフ＋積雪。
+  */
+
+  j2rect(
+    x-4,
+    y-2,
+    w+8,
+    10,
+    "#dfe9ec"
+  );
+
+
+  j2rect(
+    x-2,
+    y-5,
+    w+4,
+    7,
+    "#f1f6f7"
+  );
+
+
+  j2rect(
+    x-3,
+    y+7,
+    w+6,
+    3,
+    "#9db2bd"
+  );
+
+
+  /*
+  雪の凹凸
+  */
+
+  for(
+    let px=x+7;
+    px<x+w-8;
+    px+=25
+  ){
+
+    const n=
+      j2hash(
+        Math.floor(px),
+        Math.floor(y),
+        38
+      );
+
+
+    j2rect(
+      px,
+      y-7-n*3,
+      11+n*10,
+      5+n*2,
+      "#edf4f6"
+    );
+
+  }
+
+
+  /*
+  つらら
+  */
+
+  for(
+    let px=x+18;
+    px<x+w-12;
+    px+=48
+  ){
+
+    const n=
+      j2hash(
+        Math.floor(px),
+        Math.floor(y),
+        41
+      );
+
+
+    if(n>.43){
+
+      j2rect(
+        px,
+        y+8,
+        2,
+        5+n*8,
+        "#b8d7e1"
+      );
+
+    }
+
+  }
 
 }
 
@@ -1232,76 +1228,70 @@ function jxBuildingSnow(
 // SNOW BANK
 // ============================================================
 
-function jxSnowBank(
+function j2SnowBank(
   x,
   y,
-  width
+  w
 ){
 
   ctx.save();
 
-
-  ctx.fillStyle =
-    "rgba(222,232,236,.94)";
-
+  ctx.fillStyle=
+    "#dbe6e9";
 
   ctx.beginPath();
 
-
   ctx.moveTo(
     x,
-    y+8
+    y+11
   );
 
 
   for(
     let px=0;
-    px<=width;
-    px+=18
+    px<=w;
+    px+=17
   ){
 
-    const bump =
-      2+
-      jxHash(
+    const bump=
+      3+
+      j2hash(
         Math.floor(x+px),
         Math.floor(y),
-        44
+        47
       )*7;
 
 
     ctx.lineTo(
       x+px,
-      y+8-bump
+      y+11-bump
     );
 
   }
 
 
   ctx.lineTo(
-    x+width,
-    y+14
+    x+w,
+    y+15
   );
-
 
   ctx.lineTo(
     x,
-    y+14
+    y+15
   );
-
 
   ctx.closePath();
 
   ctx.fill();
 
 
-  jxRect(
+  j2rect(
     x,
-    y+11,
-    width,
+    y+12,
+    w,
     3,
-    "rgba(125,151,165,.18)"
+    "rgba(102,132,147,.22)"
   );
-
 
   ctx.restore();
 
@@ -1309,94 +1299,549 @@ function jxSnowBank(
 
 
 // ============================================================
-// STALL WINTER OVERLAY
+// SUPERMARKET
 // ============================================================
 
-drawStalls = function(time){
+function j2Supermarket(
+  b,x,y,w,h
+){
 
-  JX_originalDrawStalls(time);
+  j2UrbanBuilding(
+    b,x,y,w,h,
+    {
+      wall:"#747d80",
+      side:"#5c676b",
+      floors:3,
+      sign:"北方生活超市",
+      signColor:"#39705d"
+    }
+  );
 
+
+  /*
+  小さな販促ポスター
+  */
+
+  j2rect(
+    x+20,
+    y+h-31,
+    18,
+    19,
+    "#e7e0ce"
+  );
+
+
+  j2Text(
+    "特价",
+    x+29,
+    y+h-22,
+    8,
+    "#a44238"
+  );
+
+}
+
+
+// ============================================================
+// COLD NOODLE RESTAURANT
+// ============================================================
+
+function j2ColdNoodle(
+  b,x,y,w,h
+){
+
+  j2UrbanBuilding(
+    b,x,y,w,h,
+    {
+      wall:"#796f68",
+      side:"#625952",
+      floors:3,
+      sign:"鸡西大冷面",
+      signColor:"#963f35"
+    }
+  );
+
+
+  /*
+  辣菜の小看板
+  */
+
+  j2rect(
+    x+w-58,
+    y+h-58,
+    36,
+    18,
+    "#e8ddc4"
+  );
+
+
+  j2Text(
+    "冷面·辣菜",
+    x+w-40,
+    y+h-49,
+    7,
+    "#a23f34"
+  );
+
+
+  /*
+  窓の湯気
+  */
+
+  j2rect(
+    x+31,
+    y+h-30,
+    26,
+    11,
+    "rgba(230,235,229,.17)"
+  );
+
+}
+
+
+// ============================================================
+// NORTHEAST RESTAURANT
+// ============================================================
+
+function j2Restaurant(
+  b,x,y,w,h
+){
+
+  j2UrbanBuilding(
+    b,x,y,w,h,
+    {
+      wall:"#756c66",
+      side:"#5e5753",
+      floors:3,
+      sign:"东北家常菜",
+      signColor:"#88443c"
+    }
+  );
+
+
+  j2Text(
+    "热菜 · 炖菜",
+    x+w/2,
+    y+h-25,
+    8,
+    "#ead9bd"
+  );
+
+}
+
+
+// ============================================================
+// CONVENIENCE STORE
+// ============================================================
+
+function j2Convenience(
+  b,x,y,w,h
+){
+
+  j2UrbanBuilding(
+    b,x,y,w,h,
+    {
+      wall:"#68777b",
+      side:"#526369",
+      floors:3,
+      sign:"冬日便利店",
+      signColor:"#3c6570"
+    }
+  );
+
+
+  /*
+  OPEN
+  */
+
+  j2rect(
+    x+w-54,
+    y+h-33,
+    28,
+    12,
+    "#24383e"
+  );
+
+
+  j2Text(
+    "营业中",
+    x+w-40,
+    y+h-27,
+    7,
+    "#d5e8d4"
+  );
+
+}
+
+
+// ============================================================
+// PHARMACY
+// ============================================================
+
+function j2Pharmacy(
+  b,x,y,w,h
+){
+
+  j2UrbanBuilding(
+    b,x,y,w,h,
+    {
+      wall:"#6e7774",
+      side:"#58615f",
+      floors:2,
+      sign:"百姓药房",
+      signColor:"#3d7257"
+    }
+  );
+
+
+  /*
+  薬局十字
+  */
+
+  const cx=
+    x+w-34;
+
+  const cy=
+    y+h-48;
+
+
+  j2rect(
+    cx-3,
+    cy-10,
+    6,
+    20,
+    "#d8eee2"
+  );
+
+
+  j2rect(
+    cx-10,
+    cy-3,
+    20,
+    6,
+    "#d8eee2"
+  );
+
+}
+
+
+// ============================================================
+// PHONE SHOP
+// ============================================================
+
+function j2PhoneShop(
+  b,x,y,w,h
+){
+
+  j2UrbanBuilding(
+    b,x,y,w,h,
+    {
+      wall:"#68707b",
+      side:"#535b65",
+      floors:2,
+      sign:"手机维修",
+      signColor:"#426184"
+    }
+  );
+
+
+  /*
+  スマホアイコン
+  */
+
+  const px=
+    x+23;
+
+  const py=
+    y+h-37;
+
+
+  j2rect(
+    px,
+    py,
+    13,
+    21,
+    "#202b34"
+  );
+
+
+  j2rect(
+    px+2,
+    py+3,
+    9,
+    13,
+    "#7da0af"
+  );
+
+
+  j2rect(
+    px+5,
+    py+18,
+    3,
+    1,
+    "#d5d9d7"
+  );
+
+}
+
+
+// ============================================================
+// FALLBACK URBAN BUILDING
+// ============================================================
+
+function j2GenericBuilding(
+  b,x,y,w,h
+){
+
+  j2UrbanBuilding(
+    b,x,y,w,h,
+    {
+      wall:b.color || "#70777a",
+      side:"#555f63",
+      floors:
+        h>250
+          ? 4
+          : 3,
+      sign:b.name || "商店",
+      signColor:"#76504a"
+    }
+  );
+
+}
+
+
+// ============================================================
+// BUILDING DISPATCH
+// ============================================================
+
+function j2DrawJixiBuilding(
+  b,x,y,w,h
+){
+
+  switch(b.jixiStyle){
+
+    case "supermarket":
+
+      j2Supermarket(
+        b,x,y,w,h
+      );
+
+      break;
+
+
+    case "coldNoodle":
+
+      j2ColdNoodle(
+        b,x,y,w,h
+      );
+
+      break;
+
+
+    case "restaurant":
+
+      j2Restaurant(
+        b,x,y,w,h
+      );
+
+      break;
+
+
+    case "convenience":
+
+      j2Convenience(
+        b,x,y,w,h
+      );
+
+      break;
+
+
+    case "pharmacy":
+
+      j2Pharmacy(
+        b,x,y,w,h
+      );
+
+      break;
+
+
+    case "phoneShop":
+
+      j2PhoneShop(
+        b,x,y,w,h
+      );
+
+      break;
+
+
+    default:
+
+      j2GenericBuilding(
+        b,x,y,w,h
+      );
+
+      break;
+
+  }
+
+}
+
+
+// ============================================================
+// BUILDINGS OVERRIDE
+// ============================================================
+
+drawBuildings=function(){
+
+  /*
+  ============================================================
+  鸡西の屋外マップ
+  ============================================================
+  */
 
   if(
-    !jxIsOutdoor()
+    j2Outdoor() &&
+    currentMapId==="food"
   ){
+
+    const map=j2map();
+
+
+    for(
+      const b of
+      map.buildings || []
+    ){
+
+      const x=
+        b.x*TILE-camera.x;
+
+      const y=
+        b.y*TILE-camera.y;
+
+      const w=
+        b.w*TILE;
+
+      const h=
+        b.h*TILE;
+
+
+      if(
+        x>canvas.width+100 ||
+        y>canvas.height+100 ||
+        x+w<-100 ||
+        y+h<-100
+      ){
+        continue;
+      }
+
+
+      /*
+      ここでは元の杭州建築を描かない。
+      完全に鶏西建築へ置換。
+      */
+
+      j2DrawJixiBuilding(
+        b,x,y,w,h
+      );
+
+    }
+
+
+    return;
+
+  }
+
+
+  /*
+  他マップは次回置換するまで
+  既存 visuals.js を維持。
+  */
+
+  JXV2_drawBuildings();
+
+};
+
+
+// ============================================================
+// WINTER STALLS
+// ============================================================
+
+drawStalls=function(time){
+
+  JXV2_drawStalls(time);
+
+
+  if(!j2Outdoor()){
     return;
   }
 
 
-  const map =
-    jxMap();
+  const map=j2map();
 
 
   for(
-    const stall of
+    const s of
     map.stalls || []
   ){
 
-    const x =
-      stall.x*TILE-
-      camera.x;
+    const x=
+      s.x*TILE-camera.x;
 
+    const y=
+      s.y*TILE-camera.y;
 
-    const y =
-      stall.y*TILE-
-      camera.y;
-
-
-    const width =
-      stall.width*TILE;
+    const w=
+      s.width*TILE;
 
 
     /*
-    屋台テントの上の雪。
+    テント積雪
     */
 
-    jxRect(
+    j2rect(
       x-2,
-      y-3,
-      width+4,
-      6,
-      "rgba(239,246,248,.96)"
+      y-4,
+      w+4,
+      7,
+      "#edf4f6"
     );
 
 
-    jxRect(
-      x+3,
+    j2rect(
+      x,
       y+3,
-      width-6,
+      w,
       3,
-      "rgba(183,205,215,.42)"
+      "#a9bec8"
     );
 
 
     /*
-    小さな雪の垂れ。
+    雪垂れ
     */
 
     for(
-      let px=x+10;
-      px<x+width-5;
-      px+=28
+      let px=x+11;
+      px<x+w-5;
+      px+=29
     ){
 
-      const n =
-        jxHash(
+      const n=
+        j2hash(
           Math.floor(px),
           Math.floor(y),
-          52
+          61
         );
 
 
-      if(
-        n>.45
-      ){
+      if(n>.45){
 
-        jxRect(
+        j2rect(
           px,
-          y+2,
+          y+3,
           2,
           4+n*5,
-          "rgba(221,239,244,.76)"
+          "#c6e0e7"
         );
 
       }
@@ -1412,19 +1857,14 @@ drawStalls = function(time){
 // HEATING SMOKE
 // ============================================================
 
-function jxHeatingSmoke(
-  time
-){
+function j2HeatingSmoke(time){
 
-  if(
-    !jxIsOutdoor()
-  ){
+  if(!j2Outdoor()){
     return;
   }
 
 
-  const map =
-    jxMap();
+  const map=j2map();
 
 
   for(
@@ -1432,84 +1872,76 @@ function jxHeatingSmoke(
     map.buildings || []
   ){
 
-    const seed =
-      jxHash(
+    const seed=
+      j2hash(
         b.x,
         b.y,
         71
       );
 
 
-    if(
-      seed<.48
-    ){
+    if(seed<.42){
       continue;
     }
 
 
-    const baseX =
+    const bx=
       (
         b.x+
-        b.w*.72
+        b.w*.76
       )*TILE-
       camera.x;
 
 
-    const baseY =
+    const by=
       b.y*TILE-
-      camera.y+
-      3;
+      camera.y-
+      2;
 
 
-    for(
-      let i=0;
-      i<4;
-      i++
-    ){
+    for(let i=0;i<4;i++){
 
-      const cycle =
+      const cycle=
         (
-          time*11+
-          i*19+
-          seed*40
-        )%70;
+          time*10+
+          i*18+
+          seed*47
+        )%72;
 
 
-      const px =
-        baseX+
+      const px=
+        bx+
         Math.sin(
-          time*.8+
+          time*.7+
           i+
-          seed*5
+          seed*4
         )*
         (
-          5+
-          cycle*.11
+          4+
+          cycle*.12
         );
 
 
-      const py =
-        baseY-
-        cycle;
+      const py=
+        by-cycle;
 
 
-      const size =
+      const r=
         4+
-        cycle*.14;
+        cycle*.12;
 
 
       ctx.save();
 
-      ctx.globalAlpha =
+      ctx.globalAlpha=
         Math.max(
           0,
-          .28-
-          cycle/300
+          .28-cycle/310
         );
 
 
-      ctx.fillStyle =
-        "rgba(229,235,237,.82)";
+      ctx.fillStyle=
+        "#e4eaeb";
 
 
       ctx.beginPath();
@@ -1517,7 +1949,7 @@ function jxHeatingSmoke(
       ctx.arc(
         px,
         py,
-        size,
+        r,
         0,
         Math.PI*2
       );
@@ -1534,32 +1966,138 @@ function jxHeatingSmoke(
 
 
 // ============================================================
-// SNOWFALL
+// DAYLIGHT
 // ============================================================
 
-function jxDrawSnowfall(
-  time
-){
+function j2Daylight(){
 
-  if(
-    !jxIsOutdoor()
-  ){
+  if(!j2Outdoor()){
     return;
   }
 
 
-  const map =
-    jxMap();
+  ctx.save();
+
+  ctx.globalCompositeOperation=
+    "screen";
 
 
-  const strength =
-    map.jixiWinter?.snowStrength ??
-    .7;
+  const g=
+    ctx.createLinearGradient(
+      0,0,
+      0,canvas.height
+    );
 
 
-  const count =
+  g.addColorStop(
+    0,
+    "rgba(172,195,209,.33)"
+  );
+
+
+  g.addColorStop(
+    .5,
+    "rgba(150,173,187,.24)"
+  );
+
+
+  g.addColorStop(
+    1,
+    "rgba(116,139,151,.16)"
+  );
+
+
+  ctx.fillStyle=g;
+
+
+  ctx.fillRect(
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+
+  ctx.restore();
+
+}
+
+
+// ============================================================
+// COLD WIND
+// ============================================================
+
+function j2Wind(time){
+
+  if(!j2Outdoor()){
+    return;
+  }
+
+
+  ctx.save();
+
+  ctx.globalAlpha=.07;
+
+
+  for(let i=0;i<6;i++){
+
+    const y=
+      (
+        i*103+
+        time*5
+      )%
+      canvas.height;
+
+
+    const x=
+      (
+        time*14+
+        i*167
+      )%
+      (
+        canvas.width+200
+      )-
+      200;
+
+
+    j2line(
+      x,
+      y,
+      x+75,
+      y-5,
+      "#edf5f7",
+      2
+    );
+
+  }
+
+
+  ctx.restore();
+
+}
+
+
+// ============================================================
+// FALLING SNOW
+// ============================================================
+
+function j2Snowfall(time){
+
+  if(!j2Outdoor()){
+    return;
+  }
+
+
+  const map=j2map();
+
+
+  const strength=
+    map.jixiWinter?.snowStrength ?? .7;
+
+
+  const count=
     Math.floor(
-      JX_SNOW_COUNT*
+      J2_SNOW.length*
       Math.min(
         1,
         strength
@@ -1570,41 +2108,33 @@ function jxDrawSnowfall(
   ctx.save();
 
 
-  for(
-    let i=0;
-    i<count;
-    i++
-  ){
+  for(let i=0;i<count;i++){
 
-    const s =
-      jxSnowflakes[i];
+    const s=
+      J2_SNOW[i];
 
 
-    const layerSpeed =
-      .55+
-      s.layer*.8;
-
-
-    const y =
+    const y=
       (
         s.y+
         time*
         s.speed*
-        layerSpeed
+        (
+          .55+
+          s.layer*.8
+        )
       )%
       (
-        canvas.height+
-        40
+        canvas.height+40
       )-
       20;
 
 
-    const x =
+    const x=
       (
         s.x+
         Math.sin(
-          time*.7+
-          s.phase
+          time*.7+s.phase
         )*
         s.drift+
         time*
@@ -1614,13 +2144,12 @@ function jxDrawSnowfall(
         )
       )%
       (
-        canvas.width+
-        40
+        canvas.width+40
       )-
       20;
 
 
-    const size =
+    const size=
       s.size*
       (
         .65+
@@ -1628,196 +2157,41 @@ function jxDrawSnowfall(
       );
 
 
-    ctx.globalAlpha =
-      .40+
-      s.layer*.48;
+    ctx.globalAlpha=
+      .42+
+      s.layer*.46;
 
 
-    ctx.fillStyle =
+    ctx.fillStyle=
       s.layer>.72
         ? "#ffffff"
-        : "#e9f2f5";
+        : "#eaf3f6";
 
 
-    if(
-      s.layer>.72
-    ){
-
-      /*
-      手前の雪は少し縦長。
-      */
-
-      ctx.fillRect(
-        Math.floor(x),
-        Math.floor(y),
-        Math.max(
-          1,
-          Math.floor(size)
-        ),
-        Math.max(
-          2,
-          Math.floor(size*1.8)
+    ctx.fillRect(
+      Math.floor(x),
+      Math.floor(y),
+      Math.max(
+        1,
+        Math.floor(size)
+      ),
+      Math.max(
+        1,
+        Math.floor(
+          size*
+          (
+            s.layer>.72
+              ? 1.7
+              : 1
+          )
         )
-      );
-
-    }
-
-    else{
-
-      ctx.fillRect(
-        Math.floor(x),
-        Math.floor(y),
-        Math.max(
-          1,
-          Math.floor(size)
-        ),
-        Math.max(
-          1,
-          Math.floor(size)
-        )
-      );
-
-    }
+      )
+    );
 
   }
 
 
   ctx.restore();
-
-}
-
-
-// ============================================================
-// COLD AIR / WIND
-// ============================================================
-
-function jxColdAir(
-  time
-){
-
-  if(
-    !jxIsOutdoor()
-  ){
-    return;
-  }
-
-
-  /*
-  強すぎない横方向の雪煙。
-  */
-
-  ctx.save();
-
-  ctx.globalAlpha =
-    .08;
-
-
-  for(
-    let i=0;
-    i<7;
-    i++
-  ){
-
-    const y =
-      (
-        i*97+
-        time*5
-      )%
-      canvas.height;
-
-
-    const x =
-      (
-        time*13+
-        i*151
-      )%
-      (
-        canvas.width+220
-      )-
-      220;
-
-
-    ctx.strokeStyle =
-      "rgba(230,240,244,.55)";
-
-
-    ctx.lineWidth =
-      2;
-
-
-    ctx.beginPath();
-
-
-    ctx.moveTo(
-      x,
-      y
-    );
-
-
-    ctx.lineTo(
-      x+80,
-      y-5
-    );
-
-
-    ctx.stroke();
-
-  }
-
-
-  ctx.restore();
-
-}
-
-
-// ============================================================
-// FROSTED SCREEN EDGES
-// ============================================================
-
-function jxWinterAtmosphere(){
-
-  if(
-    !jxIsOutdoor()
-  ){
-    return;
-  }
-
-
-  /*
-  画面上部に冬空の冷たい空気。
-  */
-
-  const top =
-    ctx.createLinearGradient(
-      0,
-      0,
-      0,
-      150
-    );
-
-
-  top.addColorStop(
-    0,
-    "rgba(202,219,228,.10)"
-  );
-
-
-  top.addColorStop(
-    1,
-    "rgba(202,219,228,0)"
-  );
-
-
-  ctx.fillStyle =
-    top;
-
-
-  ctx.fillRect(
-    0,
-    0,
-    canvas.width,
-    150
-  );
 
 }
 
@@ -1826,24 +2200,18 @@ function jxWinterAtmosphere(){
 // INDOOR WARMTH
 // ============================================================
 
-function jxIndoorWarmth(){
+function j2IndoorWarmth(){
 
-  if(
-    !jxIsIndoor()
-  ){
+  if(!j2Indoor()){
     return;
   }
 
 
-  /*
-  外の寒さとの差を出すため、
-  店内は暖房の効いた暖色。
-  */
-
   ctx.save();
 
-  ctx.fillStyle =
-    "rgba(255,176,95,.025)";
+  ctx.fillStyle=
+    "rgba(255,176,95,.028)";
+
 
   ctx.fillRect(
     0,
@@ -1852,85 +2220,60 @@ function jxIndoorWarmth(){
     canvas.height
   );
 
+
   ctx.restore();
 
 }
 
 
 // ============================================================
-// FINAL DRAW WRAPPER
+// FINAL DRAW
 // ============================================================
 
-draw = function(time){
+draw=function(time){
 
   /*
-  visuals.js + motion.js までの
-  現在の描画をすべて実行。
+  既存ゲーム＋visuals＋motion
   */
 
-  JX_originalDraw(time);
+  JXV2_draw(time);
 
 
-  /*
-  鶏西・屋外。
-  */
-
-  if(
-    jxIsOutdoor()
-  ){
+  if(j2Outdoor()){
 
     /*
-    夜景を冬の昼へ。
+    昼光
     */
 
-    jxDaylight();
+    j2Daylight();
 
 
     /*
-    建物から上がる暖房煙。
+    集合住宅・店舗の暖房煙
     */
 
-    jxHeatingSmoke(
-      time
-    );
+    j2HeatingSmoke(time);
 
 
     /*
-    冬の風。
+    寒風
     */
 
-    jxColdAir(
-      time
-    );
+    j2Wind(time);
 
 
     /*
-    空気遠近感。
+    最前面の降雪
     */
 
-    jxWinterAtmosphere();
-
-
-    /*
-    最前面の降雪。
-    */
-
-    jxDrawSnowfall(
-      time
-    );
+    j2Snowfall(time);
 
   }
 
 
-  /*
-  店内は暖かく。
-  */
+  else if(j2Indoor()){
 
-  else if(
-    jxIsIndoor()
-  ){
-
-    jxIndoorWarmth();
+    j2IndoorWarmth();
 
   }
 
@@ -1938,12 +2281,12 @@ draw = function(time){
 
 
 // ============================================================
-// JIXI UI
+// UI
 // ============================================================
 
-function jxUpdateStaticUI(){
+function j2UpdateUI(){
 
-  const title =
+  const title=
     document.querySelector(
       ".game-header h1"
     );
@@ -1951,13 +2294,13 @@ function jxUpdateStaticUI(){
 
   if(title){
 
-    title.textContent =
+    title.textContent=
       "鸡西・冬日";
 
   }
 
 
-  const eyebrow =
+  const eyebrow=
     document.querySelector(
       ".eyebrow"
     );
@@ -1965,13 +2308,13 @@ function jxUpdateStaticUI(){
 
   if(eyebrow){
 
-    eyebrow.textContent =
+    eyebrow.textContent=
       "鸡西探索录 · JIXI EXPLORER";
 
   }
 
 
-  const footer =
+  const footer=
     document.querySelector(
       ".footer-location"
     );
@@ -1979,35 +2322,17 @@ function jxUpdateStaticUI(){
 
   if(footer){
 
-    footer.textContent =
+    footer.textContent=
       "中国 · 黑龙江省 · 鸡西市";
-
-  }
-
-
-  const clock =
-    document.getElementById(
-      "clock"
-    );
-
-
-  if(clock){
-
-    clock.textContent =
-      "13:42";
 
   }
 
 }
 
 
-// ============================================================
-// START
-// ============================================================
-
-jxUpdateStaticUI();
+j2UpdateUI();
 
 
 console.log(
-  "鸡西探索录 Winter Visuals Ver.1 loaded"
+  "鸡西探索录 Winter Visuals Ver.2 loaded"
 );
