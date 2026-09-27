@@ -1,75 +1,66 @@
 "use strict";
 
 /*
-============================================================
+==========================================================
  鸡西探索录
- JIXI WINTER VISUALS Ver.2
+ JIXI VISUAL SYSTEM Ver.4
+ "WINTER CITY"
 
- 「雪の杭州」から「冬の鸡西」へ。
+ 対応：
+  food   = 鸡冠区・中心大街
+  market = 园林路・南山早市
+  hotel  = 鸡西站・煤城街区
+  lake   = 兴凯湖・冰雪湖岸
 
- ・杭州風瓦屋根を視覚的に置換
- ・東北地方の中層都市建築
- ・集合住宅＋1階店舗
- ・連続する中国語店招
- ・鸡西大冷面館
- ・スーパー
- ・薬局
- ・スマホ修理店
- ・東北料理店
- ・雪庇 / つらら
- ・暖房煙
- ・凍結路面
- ・轍
- ・積雪
- ・昼間の寒色光
- ・降雪
-
- gameplay / collision には触れない。
-============================================================
+ 方針：
+ ・杭州版 visuals.js のゲーム機能は維持
+ ・屋外建築を東北都市型へ変更
+ ・南山早市を専用描画
+ ・鸡西站エリアを専用描画
+ ・兴凯湖を完全冬景色化
+ ・雪、除雪跡、煙、氷、冬季生活感を追加
+==========================================================
 */
 
 
-// ============================================================
-// ORIGINALS
-// ============================================================
+// ======================================================
+// ORIGINAL
+// ======================================================
 
-const JXV2_drawMap =
-  drawMap;
-
-const JXV2_draw =
-  draw;
-
-const JXV2_drawBuildings =
-  drawBuildings;
-
-const JXV2_drawStalls =
-  drawStalls;
+const JX4_originalDrawMap = drawMap;
+const JX4_originalDrawBuildings = drawBuildings;
+const JX4_originalDrawStalls = drawStalls;
+const JX4_originalDraw = draw;
 
 
-// ============================================================
-// HELPERS
-// ============================================================
+// ======================================================
+// BASIC
+// ======================================================
 
-function j2rect(x,y,w,h,color){
+function jx4Map(){
+  return getCurrentMap();
+}
 
+function jx4Outdoor(){
+  return (
+    currentMapId==="food" ||
+    currentMapId==="market" ||
+    currentMapId==="hotel" ||
+    currentMapId==="lake"
+  );
+}
+
+function jx4Rect(x,y,w,h,color){
   ctx.fillStyle=color;
-
   ctx.fillRect(
     Math.floor(x),
     Math.floor(y),
     Math.ceil(w),
     Math.ceil(h)
   );
-
 }
 
-
-function j2line(
-  x1,y1,
-  x2,y2,
-  color,
-  width=1
-){
+function jx4Line(x1,y1,x2,y2,color,width=1){
 
   ctx.save();
 
@@ -91,220 +82,110 @@ function j2line(
   ctx.stroke();
 
   ctx.restore();
-
 }
 
+function jx4Hash(x,y,salt=0){
 
-function j2hash(x,y,salt=0){
-
-  let n =
+  let n=
     Math.imul(
-      x+salt*37,
+      (x|0)+salt*31,
       374761393
     )+
-
     Math.imul(
-      y+salt*19,
+      (y|0)+salt*17,
       668265263
     );
 
-  n =
-    (n^(n>>>13))>>>0;
+  n=(n^(n>>>13))>>>0;
 
   return (n%1000)/1000;
-
 }
 
+function jx4Visible(x,y,w=32,h=32){
 
-function j2map(){
-
-  return getCurrentMap();
-
-}
-
-
-function j2Outdoor(){
-
-  const m=j2map();
-
-  return !!(
-    m &&
-    m.jixiWinter &&
-    !m.jixiWinter.indoor
+  return !(
+    x>canvas.width+120 ||
+    y>canvas.height+120 ||
+    x+w<-120 ||
+    y+h<-120
   );
-
 }
 
 
-function j2Indoor(){
-
-  const m=j2map();
-
-  return !!(
-    m &&
-    m.jixiWinter &&
-    m.jixiWinter.indoor
-  );
-
-}
-
-
-// ============================================================
-// TEXT
-// ============================================================
-
-function j2Text(
-  text,
-  x,
-  y,
-  size=12,
-  color="#f5f3eb",
-  align="center"
-){
-
-  ctx.save();
-
-  ctx.imageSmoothingEnabled=false;
-
-  ctx.font=
-    `bold ${size}px sans-serif`;
-
-  ctx.textAlign=align;
-
-  ctx.textBaseline="middle";
-
-  ctx.fillStyle=
-    "rgba(20,25,29,.65)";
-
-  ctx.fillText(
-    text,
-    Math.floor(x)+1,
-    Math.floor(y)+1
-  );
-
-  ctx.fillStyle=color;
-
-  ctx.fillText(
-    text,
-    Math.floor(x),
-    Math.floor(y)
-  );
-
-  ctx.restore();
-
-}
-
-
-// ============================================================
-// SNOW
-// ============================================================
-
-const J2_SNOW=[];
-
-for(let i=0;i<190;i++){
-
-  J2_SNOW.push({
-
-    x:Math.random()*canvas.width,
-
-    y:Math.random()*canvas.height,
-
-    size:
-      1+
-      Math.floor(
-        Math.random()*3
-      ),
-
-    speed:
-      18+
-      Math.random()*40,
-
-    drift:
-      5+
-      Math.random()*16,
-
-    phase:
-      Math.random()*Math.PI*2,
-
-    layer:
-      Math.random()
-
-  });
-
-}
-
-
-// ============================================================
-// MAP SNOW OVERLAY
-// ============================================================
+// ======================================================
+// MAP
+// ======================================================
 
 drawMap=function(time){
 
-  JXV2_drawMap(time);
+  JX4_originalDrawMap(time);
 
-  if(!j2Outdoor()){
+  if(!jx4Outdoor()){
     return;
   }
 
-  j2Ground(time);
+  jx4WinterGround(time);
+
+  if(currentMapId==="food"){
+    jx4DowntownGround();
+  }
+
+  else if(currentMapId==="market"){
+    jx4MarketGround();
+  }
+
+  else if(currentMapId==="hotel"){
+    jx4StationGround();
+  }
+
+  else if(currentMapId==="lake"){
+    jx4LakeGround(time);
+  }
 
 };
 
 
-function j2Ground(time){
+// ======================================================
+// WINTER GROUND
+// ======================================================
 
-  const map=j2map();
+function jx4WinterGround(time){
 
-  if(
-    !map ||
-    !map.grid
-  ){
-    return;
-  }
+  const map=jx4Map();
 
+  const rows=map.grid.length;
+  const cols=map.grid[0].length;
 
-  const rows=
-    map.grid.length;
+  const x0=Math.max(
+    0,
+    Math.floor(camera.x/TILE)-1
+  );
 
-  const cols=
-    map.grid[0].length;
+  const x1=Math.min(
+    cols,
+    Math.ceil(
+      (camera.x+canvas.width)/TILE
+    )+1
+  );
 
+  const y0=Math.max(
+    0,
+    Math.floor(camera.y/TILE)-1
+  );
 
-  const sx0=
-    Math.max(
-      0,
-      Math.floor(camera.x/TILE)-1
-    );
-
-  const sy0=
-    Math.max(
-      0,
-      Math.floor(camera.y/TILE)-1
-    );
-
-  const sx1=
-    Math.min(
-      cols,
-      Math.ceil(
-        (camera.x+canvas.width)/TILE
-      )+1
-    );
-
-  const sy1=
-    Math.min(
-      rows,
-      Math.ceil(
-        (camera.y+canvas.height)/TILE
-      )+1
-    );
+  const y1=Math.min(
+    rows,
+    Math.ceil(
+      (camera.y+canvas.height)/TILE
+    )+1
+  );
 
 
-  for(let ty=sy0;ty<sy1;ty++){
+  for(let ty=y0;ty<y1;ty++){
 
-    for(let tx=sx0;tx<sx1;tx++){
+    for(let tx=x0;tx<x1;tx++){
 
-      const tile=
-        map.grid[ty][tx];
+      const tile=map.grid[ty][tx];
 
       const x=
         tx*TILE-camera.x;
@@ -313,86 +194,42 @@ function j2Ground(time){
         ty*TILE-camera.y;
 
       const seed=
-        j2hash(tx,ty,3);
+        jx4Hash(tx,ty,7);
 
 
-      // ------------------------------------------------------
-      // SNOWY PAVEMENT
-      // ------------------------------------------------------
-
-      if(tile===T.FLOOR){
-
-        j2rect(
-          x,y,TILE,TILE,
-          seed>.5
-            ? "rgba(218,227,232,.72)"
-            : "rgba(203,215,221,.70)"
-        );
-
-
-        if(seed>.68){
-
-          j2rect(
-            x+5,
-            y+7,
-            17,
-            2,
-            "rgba(249,251,252,.40)"
-          );
-
-        }
-
-
-        if(seed<.20){
-
-          j2rect(
-            x+18,
-            y+23,
-            9,
-            2,
-            "rgba(124,148,161,.18)"
-          );
-
-        }
-
-      }
-
-
-      // ------------------------------------------------------
+      // ----------------------------------
       // ROAD
-      // ------------------------------------------------------
+      // ----------------------------------
 
-      else if(tile===T.ROAD){
+      if(tile===T.ROAD){
 
-        j2rect(
-          x,y,TILE,TILE,
-          seed>.52
-            ? "rgba(79,94,103,.59)"
-            : "rgba(70,85,95,.60)"
+        jx4Rect(
+          x,y,
+          TILE,TILE,
+          "rgba(92,105,112,.30)"
         );
 
+        // 圧雪
+        if(seed>.32){
 
-        if(seed>.66){
-
-          j2rect(
+          jx4Rect(
             x+3,
-            y+6,
-            18,
+            y+2,
+            TILE-6,
             3,
-            "rgba(210,219,223,.18)"
+            "rgba(220,228,229,.14)"
           );
 
         }
 
+        if(seed>.72){
 
-        if(seed>.84){
-
-          j2rect(
-            x+8,
-            y+18,
-            18,
+          jx4Rect(
+            x+21,
+            y+22,
+            7,
             2,
-            "rgba(190,219,229,.18)"
+            "rgba(229,235,235,.18)"
           );
 
         }
@@ -400,47 +237,80 @@ function j2Ground(time){
       }
 
 
-      // ------------------------------------------------------
+      // ----------------------------------
+      // FLOOR
+      // ----------------------------------
+
+      else if(tile===T.FLOOR){
+
+        jx4Rect(
+          x,y,
+          TILE,TILE,
+          "rgba(190,202,202,.23)"
+        );
+
+        if(seed>.45){
+
+          jx4Rect(
+            x+2,
+            y+2,
+            TILE-4,
+            4,
+            "rgba(240,244,241,.18)"
+          );
+
+        }
+
+      }
+
+
+      // ----------------------------------
       // PLAZA
-      // ------------------------------------------------------
+      // ----------------------------------
 
       else if(tile===T.PLAZA){
 
-        j2rect(
-          x,y,TILE,TILE,
-          "rgba(198,211,218,.60)"
+        jx4Rect(
+          x,y,
+          TILE,TILE,
+          "rgba(179,192,195,.20)"
         );
 
-        ctx.strokeStyle=
-          "rgba(110,133,146,.13)";
+        if((tx+ty)%2===0){
 
-        ctx.strokeRect(
-          Math.floor(x)+.5,
-          Math.floor(y)+.5,
-          TILE-1,
-          TILE-1
-        );
+          jx4Rect(
+            x+2,
+            y+2,
+            TILE-4,
+            TILE-4,
+            "rgba(229,235,234,.07)"
+          );
+
+        }
 
       }
 
 
-      // ------------------------------------------------------
+      // ----------------------------------
       // GRASS
-      // ------------------------------------------------------
+      // ----------------------------------
 
       else if(tile===T.GRASS){
 
-        j2rect(
-          x,y,TILE,TILE,
-          "rgba(217,227,230,.72)"
+        jx4Rect(
+          x,y,
+          TILE,TILE,
+          "rgba(218,228,224,.42)"
         );
 
-        if(seed>.58){
+        if(seed>.55){
 
-          j2line(
-            x+9,y+27,
-            x+10,y+18,
-            "rgba(82,105,95,.25)"
+          jx4Rect(
+            x+5,
+            y+4,
+            18,
+            4,
+            "rgba(246,248,244,.28)"
           );
 
         }
@@ -448,42 +318,37 @@ function j2Ground(time){
       }
 
 
-      // ------------------------------------------------------
-      // XINGKAI LAKE
-      // ------------------------------------------------------
+      // ----------------------------------
+      // WATER
+      // ----------------------------------
 
       else if(
         tile===T.WATER &&
-        map.jixiWinter?.frozenLake
+        currentMapId==="lake"
       ){
 
-        j2rect(
-          x,y,TILE,TILE,
-          seed>.5
-            ? "rgba(157,193,209,.86)"
-            : "rgba(145,183,201,.86)"
+        jx4Rect(
+          x,y,
+          TILE,TILE,
+          "rgba(158,191,201,.68)"
         );
 
+        jx4Rect(
+          x,
+          y+6,
+          TILE,
+          1,
+          "rgba(224,241,244,.28)"
+        );
 
-        if(seed>.70){
+        if(seed>.72){
 
-          j2rect(
-            x+2,
-            y+5,
-            21,
-            5,
-            "rgba(233,240,243,.35)"
-          );
-
-        }
-
-
-        if(seed<.25){
-
-          j2line(
-            x+4,y+22,
-            x+26,y+18,
-            "rgba(225,244,248,.35)"
+          jx4Line(
+            x+4,
+            y+21,
+            x+18,
+            y+18,
+            "rgba(79,125,142,.28)"
           );
 
         }
@@ -494,1469 +359,94 @@ function j2Ground(time){
 
   }
 
-
-  j2Tracks();
-
 }
 
 
-// ============================================================
-// ROAD TRACKS
-// ============================================================
+// ======================================================
+// FOOD : 鸡冠区・中心大街
+// ======================================================
 
-function j2Tracks(){
+function jx4DowntownGround(){
 
-  /*
-  中心大街だけ強く見せる。
-  */
-
-  if(currentMapId!=="food"){
-    return;
-  }
-
+  // 中心街の除雪跡
 
   const center=
-    26*TILE-camera.x;
+    31*TILE-camera.x;
 
+  for(let y=-60;y<canvas.height+80;y+=92){
 
-  const tracks=[
-    center-50,
-    center-36,
-    center+36,
-    center+50
-  ];
-
-
-  for(const x of tracks){
-
-    j2line(
-      x,
-      -20,
-      x,
-      canvas.height+20,
-      "rgba(36,51,60,.18)",
-      3
+    jx4Rect(
+      center-62,
+      y,
+      3,
+      38,
+      "rgba(48,57,62,.20)"
     );
 
-  }
-
-}
-
-
-// ============================================================
-// WINDOWS
-// ============================================================
-
-function j2Window(
-  x,
-  y,
-  w=16,
-  h=19,
-  lit=false
-){
-
-  /*
-  外枠
-  */
-
-  j2rect(
-    x-2,
-    y-2,
-    w+4,
-    h+4,
-    "#3e484d"
-  );
-
-
-  /*
-  ガラス
-  */
-
-  j2rect(
-    x,
-    y,
-    w,
-    h,
-    lit
-      ? "#b8a77e"
-      : "#75909c"
-  );
-
-
-  /*
-  冬空の反射
-  */
-
-  j2rect(
-    x+2,
-    y+2,
-    w-4,
-    3,
-    "rgba(218,234,240,.32)"
-  );
-
-
-  /*
-  サッシ
-  */
-
-  j2rect(
-    x+w/2,
-    y,
-    1,
-    h,
-    "#46565d"
-  );
-
-
-  j2rect(
-    x,
-    y+h*.52,
-    w,
-    1,
-    "#46565d"
-  );
-
-
-  /*
-  窓下の積雪
-  */
-
-  j2rect(
-    x-2,
-    y+h+2,
-    w+4,
-    3,
-    "#dbe6e9"
-  );
-
-}
-
-
-// ============================================================
-// AC UNIT
-// ============================================================
-
-function j2AC(x,y){
-
-  j2rect(
-    x,
-    y,
-    13,
-    8,
-    "#b8c0c1"
-  );
-
-  j2rect(
-    x+2,
-    y+2,
-    9,
-    1,
-    "#727e82"
-  );
-
-  j2rect(
-    x+2,
-    y+5,
-    7,
-    1,
-    "#727e82"
-  );
-
-}
-
-
-// ============================================================
-// PIPE
-// ============================================================
-
-function j2Pipe(
-  x,
-  y,
-  h
-){
-
-  j2rect(
-    x,
-    y,
-    4,
-    h,
-    "#596367"
-  );
-
-  j2rect(
-    x+1,
-    y,
-    1,
-    h,
-    "#879094"
-  );
-
-}
-
-
-// ============================================================
-// SHOP SIGN
-// ============================================================
-
-function j2ShopSign(
-  text,
-  x,
-  y,
-  w,
-  color="#8d3e36"
-){
-
-  j2rect(
-    x,
-    y,
-    w,
-    25,
-    "#293238"
-  );
-
-
-  j2rect(
-    x+2,
-    y+2,
-    w-4,
-    21,
-    color
-  );
-
-
-  j2rect(
-    x+3,
-    y+3,
-    w-6,
-    2,
-    "rgba(255,255,255,.16)"
-  );
-
-
-  j2Text(
-    text,
-    x+w/2,
-    y+13,
-    Math.min(
-      13,
-      Math.max(
-        9,
-        w/(text.length+1)
-      )
-    ),
-    "#f4eee0"
-  );
-
-}
-
-
-// ============================================================
-// SHOPFRONT
-// ============================================================
-
-function j2ShopFront(
-  x,
-  y,
-  w,
-  h,
-  sign,
-  signColor
-){
-
-  /*
-  一階外壁
-  */
-
-  j2rect(
-    x,
-    y,
-    w,
-    h,
-    "#565e60"
-  );
-
-
-  /*
-  看板
-  */
-
-  j2ShopSign(
-    sign,
-    x+4,
-    y+4,
-    w-8,
-    signColor
-  );
-
-
-  /*
-  ガラス
-  */
-
-  j2rect(
-    x+7,
-    y+34,
-    w-14,
-    h-40,
-    "#45636e"
-  );
-
-
-  j2rect(
-    x+9,
-    y+36,
-    w-18,
-    3,
-    "rgba(210,230,236,.25)"
-  );
-
-
-  /*
-  店内の暖色
-  */
-
-  j2rect(
-    x+11,
-    y+44,
-    w-22,
-    h-52,
-    "rgba(194,145,84,.25)"
-  );
-
-
-  /*
-  ドア
-  */
-
-  const doorW=
-    Math.min(
-      24,
-      w*.28
-    );
-
-
-  const dx=
-    x+w/2-doorW/2;
-
-
-  j2rect(
-    dx,
-    y+h-39,
-    doorW,
-    35,
-    "#33474e"
-  );
-
-
-  j2rect(
-    dx+3,
-    y+h-35,
-    doorW-6,
-    18,
-    "#7897a1"
-  );
-
-
-  j2rect(
-    dx+doorW-6,
-    y+h-19,
-    2,
-    2,
-    "#d4c39b"
-  );
-
-
-  /*
-  店頭の雪
-  */
-
-  j2rect(
-    x,
-    y+h-5,
-    w,
-    7,
-    "#dbe6e9"
-  );
-
-}
-
-
-// ============================================================
-// GENERIC JIXI URBAN BUILDING
-// ============================================================
-
-function j2UrbanBuilding(
-  b,
-  x,
-  y,
-  w,
-  h,
-  options={}
-){
-
-  const {
-
-    wall="#70777a",
-
-    side="#5b6265",
-
-    floors=4,
-
-    sign=b.name,
-
-    signColor="#76504a",
-
-    shop=true,
-
-    ac=true,
-
-    pipes=true
-
-  }=options;
-
-
-  // ----------------------------------------------------------
-  // SHADOW
-  // ----------------------------------------------------------
-
-  j2rect(
-    x+8,
-    y+12,
-    w,
-    h,
-    "rgba(25,32,36,.35)"
-  );
-
-
-  // ----------------------------------------------------------
-  // BODY
-  // ----------------------------------------------------------
-
-  j2rect(
-    x,
-    y,
-    w,
-    h,
-    wall
-  );
-
-
-  // ----------------------------------------------------------
-  // SIDE SHADE
-  // ----------------------------------------------------------
-
-  j2rect(
-    x+w-13,
-    y,
-    13,
-    h,
-    side
-  );
-
-
-  // ----------------------------------------------------------
-  // CONCRETE LINES
-  // ----------------------------------------------------------
-
-  for(
-    let yy=y+10;
-    yy<y+h-70;
-    yy+=32
-  ){
-
-    j2rect(
-      x,
-      yy,
-      w-13,
-      1,
-      "rgba(44,51,54,.18)"
+    jx4Rect(
+      center+53,
+      y+19,
+      3,
+      38,
+      "rgba(48,57,62,.18)"
     );
 
   }
 
 
-  // ----------------------------------------------------------
-  // WINDOWS
-  // ----------------------------------------------------------
-
-  const upperHeight=
-    Math.max(
-      50,
-      h-75
-    );
-
-
-  const floorGap=
-    Math.max(
-      26,
-      upperHeight/floors
-    );
-
-
-  for(let f=0;f<floors;f++){
-
-    const wy=
-      y+17+
-      f*floorGap;
-
-
-    if(wy>y+h-77){
-      break;
-    }
-
-
-    for(
-      let wx=x+18;
-      wx<x+w-35;
-      wx+=43
-    ){
-
-      const seed=
-        j2hash(
-          Math.floor(wx),
-          Math.floor(wy),
-          20+f
-        );
-
-
-      j2Window(
-        wx,
-        wy,
-        17,
-        18,
-        seed>.84
-      );
-
-    }
-
-  }
-
-
-  // ----------------------------------------------------------
-  // AIR CONDITIONERS
-  // ----------------------------------------------------------
-
-  if(ac){
-
-    for(
-      let yy=y+42;
-      yy<y+h-100;
-      yy+=64
-    ){
-
-      j2AC(
-        x+w-34,
-        yy
-      );
-
-    }
-
-  }
-
-
-  // ----------------------------------------------------------
-  // HEATING / DRAIN PIPE
-  // ----------------------------------------------------------
-
-  if(pipes){
-
-    j2Pipe(
-      x+8,
-      y+18,
-      Math.max(
-        20,
-        h-91
-      )
-    );
-
-  }
-
-
-  // ----------------------------------------------------------
-  // SHOP
-  // ----------------------------------------------------------
-
-  if(shop){
-
-    j2ShopFront(
-      x+5,
-      y+h-69,
-      w-23,
-      67,
-      sign,
-      signColor
-    );
-
-  }
-
-
-  // ----------------------------------------------------------
-  // SNOW ROOF
-  // ----------------------------------------------------------
-
-  j2SnowRoof(
-    x,
-    y,
-    w
-  );
-
-
-  // ----------------------------------------------------------
-  // SNOW BANK
-  // ----------------------------------------------------------
-
-  j2SnowBank(
-    x-3,
-    y+h-7,
-    w+5
-  );
-
-}
-
-
-// ============================================================
-// SNOW ROOF
-// ============================================================
-
-function j2SnowRoof(
-  x,
-  y,
-  w
-){
-
-  /*
-  重要：
-  中国南方風の勾配瓦屋根は描かない。
-
-  東北の都市建築らしく
-  フラットルーフ＋積雪。
-  */
-
-  j2rect(
-    x-4,
-    y-2,
-    w+8,
-    10,
-    "#dfe9ec"
-  );
-
-
-  j2rect(
-    x-2,
-    y-5,
-    w+4,
-    7,
-    "#f1f6f7"
-  );
-
-
-  j2rect(
-    x-3,
-    y+7,
-    w+6,
-    3,
-    "#9db2bd"
-  );
-
-
-  /*
-  雪の凹凸
-  */
-
-  for(
-    let px=x+7;
-    px<x+w-8;
-    px+=25
-  ){
-
-    const n=
-      j2hash(
-        Math.floor(px),
-        Math.floor(y),
-        38
-      );
-
-
-    j2rect(
-      px,
-      y-7-n*3,
-      11+n*10,
-      5+n*2,
-      "#edf4f6"
-    );
-
-  }
-
-
-  /*
-  つらら
-  */
-
-  for(
-    let px=x+18;
-    px<x+w-12;
-    px+=48
-  ){
-
-    const n=
-      j2hash(
-        Math.floor(px),
-        Math.floor(y),
-        41
-      );
-
-
-    if(n>.43){
-
-      j2rect(
-        px,
-        y+8,
-        2,
-        5+n*8,
-        "#b8d7e1"
-      );
-
-    }
-
-  }
-
-}
-
-
-// ============================================================
-// SNOW BANK
-// ============================================================
-
-function j2SnowBank(
-  x,
-  y,
-  w
-){
-
-  ctx.save();
-
-  ctx.fillStyle=
-    "#dbe6e9";
-
-  ctx.beginPath();
-
-  ctx.moveTo(
-    x,
-    y+11
-  );
-
-
-  for(
-    let px=0;
-    px<=w;
-    px+=17
-  ){
-
-    const bump=
-      3+
-      j2hash(
-        Math.floor(x+px),
-        Math.floor(y),
-        47
-      )*7;
-
-
-    ctx.lineTo(
-      x+px,
-      y+11-bump
-    );
-
-  }
-
-
-  ctx.lineTo(
-    x+w,
-    y+15
-  );
-
-  ctx.lineTo(
-    x,
-    y+15
-  );
-
-  ctx.closePath();
-
-  ctx.fill();
-
-
-  j2rect(
-    x,
-    y+12,
-    w,
-    3,
-    "rgba(102,132,147,.22)"
-  );
-
-  ctx.restore();
-
-}
-
-
-// ============================================================
-// SUPERMARKET
-// ============================================================
-
-function j2Supermarket(
-  b,x,y,w,h
-){
-
-  j2UrbanBuilding(
-    b,x,y,w,h,
-    {
-      wall:"#747d80",
-      side:"#5c676b",
-      floors:3,
-      sign:"北方生活超市",
-      signColor:"#39705d"
-    }
-  );
-
-
-  /*
-  小さな販促ポスター
-  */
-
-  j2rect(
-    x+20,
-    y+h-31,
-    18,
-    19,
-    "#e7e0ce"
-  );
-
-
-  j2Text(
-    "特价",
-    x+29,
-    y+h-22,
-    8,
-    "#a44238"
-  );
-
-}
-
-
-// ============================================================
-// COLD NOODLE RESTAURANT
-// ============================================================
-
-function j2ColdNoodle(
-  b,x,y,w,h
-){
-
-  j2UrbanBuilding(
-    b,x,y,w,h,
-    {
-      wall:"#796f68",
-      side:"#625952",
-      floors:3,
-      sign:"鸡西大冷面",
-      signColor:"#963f35"
-    }
-  );
-
-
-  /*
-  辣菜の小看板
-  */
-
-  j2rect(
-    x+w-58,
-    y+h-58,
-    36,
-    18,
-    "#e8ddc4"
-  );
-
-
-  j2Text(
-    "冷面·辣菜",
-    x+w-40,
-    y+h-49,
-    7,
-    "#a23f34"
-  );
-
-
-  /*
-  窓の湯気
-  */
-
-  j2rect(
-    x+31,
-    y+h-30,
-    26,
-    11,
-    "rgba(230,235,229,.17)"
-  );
-
-}
-
-
-// ============================================================
-// NORTHEAST RESTAURANT
-// ============================================================
-
-function j2Restaurant(
-  b,x,y,w,h
-){
-
-  j2UrbanBuilding(
-    b,x,y,w,h,
-    {
-      wall:"#756c66",
-      side:"#5e5753",
-      floors:3,
-      sign:"东北家常菜",
-      signColor:"#88443c"
-    }
-  );
-
-
-  j2Text(
-    "热菜 · 炖菜",
-    x+w/2,
-    y+h-25,
-    8,
-    "#ead9bd"
-  );
-
-}
-
-
-// ============================================================
-// CONVENIENCE STORE
-// ============================================================
-
-function j2Convenience(
-  b,x,y,w,h
-){
-
-  j2UrbanBuilding(
-    b,x,y,w,h,
-    {
-      wall:"#68777b",
-      side:"#526369",
-      floors:3,
-      sign:"冬日便利店",
-      signColor:"#3c6570"
-    }
-  );
-
-
-  /*
-  OPEN
-  */
-
-  j2rect(
-    x+w-54,
-    y+h-33,
-    28,
-    12,
-    "#24383e"
-  );
-
-
-  j2Text(
-    "营业中",
-    x+w-40,
-    y+h-27,
-    7,
-    "#d5e8d4"
-  );
-
-}
-
-
-// ============================================================
-// PHARMACY
-// ============================================================
-
-function j2Pharmacy(
-  b,x,y,w,h
-){
-
-  j2UrbanBuilding(
-    b,x,y,w,h,
-    {
-      wall:"#6e7774",
-      side:"#58615f",
-      floors:2,
-      sign:"百姓药房",
-      signColor:"#3d7257"
-    }
-  );
-
-
-  /*
-  薬局十字
-  */
-
-  const cx=
-    x+w-34;
-
-  const cy=
-    y+h-48;
-
-
-  j2rect(
-    cx-3,
-    cy-10,
+  // 車道中央の薄い雪筋
+
+  jx4Rect(
+    center-3,
+    0,
     6,
-    20,
-    "#d8eee2"
-  );
-
-
-  j2rect(
-    cx-10,
-    cy-3,
-    20,
-    6,
-    "#d8eee2"
+    canvas.height,
+    "rgba(217,225,225,.08)"
   );
 
 }
 
 
-// ============================================================
-// PHONE SHOP
-// ============================================================
+// ======================================================
+// MARKET : 南山早市
+// ======================================================
 
-function j2PhoneShop(
-  b,x,y,w,h
-){
+function jx4MarketGround(){
 
-  j2UrbanBuilding(
-    b,x,y,w,h,
-    {
-      wall:"#68707b",
-      side:"#535b65",
-      floors:2,
-      sign:"手机维修",
-      signColor:"#426184"
-    }
-  );
+  const map=jx4Map();
 
+  // 早市は道路脇に踏み固められた雪が多い
 
-  /*
-  スマホアイコン
-  */
+  for(let ty=2;ty<map.grid.length-2;ty+=4){
 
-  const px=
-    x+23;
+    for(let tx=2;tx<map.grid[0].length-2;tx+=5){
 
-  const py=
-    y+h-37;
-
-
-  j2rect(
-    px,
-    py,
-    13,
-    21,
-    "#202b34"
-  );
-
-
-  j2rect(
-    px+2,
-    py+3,
-    9,
-    13,
-    "#7da0af"
-  );
-
-
-  j2rect(
-    px+5,
-    py+18,
-    3,
-    1,
-    "#d5d9d7"
-  );
-
-}
-
-
-// ============================================================
-// FALLBACK URBAN BUILDING
-// ============================================================
-
-function j2GenericBuilding(
-  b,x,y,w,h
-){
-
-  j2UrbanBuilding(
-    b,x,y,w,h,
-    {
-      wall:b.color || "#70777a",
-      side:"#555f63",
-      floors:
-        h>250
-          ? 4
-          : 3,
-      sign:b.name || "商店",
-      signColor:"#76504a"
-    }
-  );
-
-}
-
-
-// ============================================================
-// BUILDING DISPATCH
-// ============================================================
-
-function j2DrawJixiBuilding(
-  b,x,y,w,h
-){
-
-  switch(b.jixiStyle){
-
-    case "supermarket":
-
-      j2Supermarket(
-        b,x,y,w,h
-      );
-
-      break;
-
-
-    case "coldNoodle":
-
-      j2ColdNoodle(
-        b,x,y,w,h
-      );
-
-      break;
-
-
-    case "restaurant":
-
-      j2Restaurant(
-        b,x,y,w,h
-      );
-
-      break;
-
-
-    case "convenience":
-
-      j2Convenience(
-        b,x,y,w,h
-      );
-
-      break;
-
-
-    case "pharmacy":
-
-      j2Pharmacy(
-        b,x,y,w,h
-      );
-
-      break;
-
-
-    case "phoneShop":
-
-      j2PhoneShop(
-        b,x,y,w,h
-      );
-
-      break;
-
-
-    default:
-
-      j2GenericBuilding(
-        b,x,y,w,h
-      );
-
-      break;
-
-  }
-
-}
-
-
-// ============================================================
-// BUILDINGS OVERRIDE
-// ============================================================
-
-drawBuildings=function(){
-
-  /*
-  ============================================================
-  鸡西の屋外マップ
-  ============================================================
-  */
-
-  if(
-    j2Outdoor() &&
-    currentMapId==="food"
-  ){
-
-    const map=j2map();
-
-
-    for(
-      const b of
-      map.buildings || []
-    ){
-
-      const x=
-        b.x*TILE-camera.x;
-
-      const y=
-        b.y*TILE-camera.y;
-
-      const w=
-        b.w*TILE;
-
-      const h=
-        b.h*TILE;
-
+      const tile=map.grid[ty][tx];
 
       if(
-        x>canvas.width+100 ||
-        y>canvas.height+100 ||
-        x+w<-100 ||
-        y+h<-100
+        tile!==T.ROAD &&
+        tile!==T.PLAZA
       ){
         continue;
       }
 
+      const x=
+        tx*TILE-camera.x;
 
-      /*
-      ここでは元の杭州建築を描かない。
-      完全に鶏西建築へ置換。
-      */
+      const y=
+        ty*TILE-camera.y;
 
-      j2DrawJixiBuilding(
-        b,x,y,w,h
-      );
-
-    }
-
-
-    return;
-
-  }
-
-
-  /*
-  他マップは次回置換するまで
-  既存 visuals.js を維持。
-  */
-
-  JXV2_drawBuildings();
-
-};
-
-
-// ============================================================
-// WINTER STALLS
-// ============================================================
-
-drawStalls=function(time){
-
-  JXV2_drawStalls(time);
-
-
-  if(!j2Outdoor()){
-    return;
-  }
-
-
-  const map=j2map();
-
-
-  for(
-    const s of
-    map.stalls || []
-  ){
-
-    const x=
-      s.x*TILE-camera.x;
-
-    const y=
-      s.y*TILE-camera.y;
-
-    const w=
-      s.width*TILE;
-
-
-    /*
-    テント積雪
-    */
-
-    j2rect(
-      x-2,
-      y-4,
-      w+4,
-      7,
-      "#edf4f6"
-    );
-
-
-    j2rect(
-      x,
-      y+3,
-      w,
-      3,
-      "#a9bec8"
-    );
-
-
-    /*
-    雪垂れ
-    */
-
-    for(
-      let px=x+11;
-      px<x+w-5;
-      px+=29
-    ){
-
-      const n=
-        j2hash(
-          Math.floor(px),
-          Math.floor(y),
-          61
-        );
-
-
-      if(n>.45){
-
-        j2rect(
-          px,
-          y+3,
-          2,
-          4+n*5,
-          "#c6e0e7"
-        );
-
+      if(!jx4Visible(x,y)){
+        continue;
       }
 
-    }
-
-  }
-
-};
-
-
-// ============================================================
-// HEATING SMOKE
-// ============================================================
-
-function j2HeatingSmoke(time){
-
-  if(!j2Outdoor()){
-    return;
-  }
-
-
-  const map=j2map();
-
-
-  for(
-    const b of
-    map.buildings || []
-  ){
-
-    const seed=
-      j2hash(
-        b.x,
-        b.y,
-        71
+      jx4Rect(
+        x+6,
+        y+21,
+        17,
+        4,
+        "rgba(232,236,232,.10)"
       );
-
-
-    if(seed<.42){
-      continue;
-    }
-
-
-    const bx=
-      (
-        b.x+
-        b.w*.76
-      )*TILE-
-      camera.x;
-
-
-    const by=
-      b.y*TILE-
-      camera.y-
-      2;
-
-
-    for(let i=0;i<4;i++){
-
-      const cycle=
-        (
-          time*10+
-          i*18+
-          seed*47
-        )%72;
-
-
-      const px=
-        bx+
-        Math.sin(
-          time*.7+
-          i+
-          seed*4
-        )*
-        (
-          4+
-          cycle*.12
-        );
-
-
-      const py=
-        by-cycle;
-
-
-      const r=
-        4+
-        cycle*.12;
-
-
-      ctx.save();
-
-      ctx.globalAlpha=
-        Math.max(
-          0,
-          .28-cycle/310
-        );
-
-
-      ctx.fillStyle=
-        "#e4eaeb";
-
-
-      ctx.beginPath();
-
-      ctx.arc(
-        px,
-        py,
-        r,
-        0,
-        Math.PI*2
-      );
-
-      ctx.fill();
-
-      ctx.restore();
 
     }
 
@@ -1965,22 +455,1726 @@ function j2HeatingSmoke(time){
 }
 
 
-// ============================================================
-// DAYLIGHT
-// ============================================================
+// ======================================================
+// HOTEL : 鸡西站・煤城街区
+// ======================================================
 
-function j2Daylight(){
+function jx4StationGround(){
 
-  if(!j2Outdoor()){
+  const map=jx4Map();
+
+  // 駅前広場の大きな舗装ライン
+
+  for(let ty=0;ty<map.grid.length;ty++){
+
+    for(let tx=0;tx<map.grid[0].length;tx++){
+
+      if(map.grid[ty][tx]!==T.PLAZA){
+        continue;
+      }
+
+      const x=
+        tx*TILE-camera.x;
+
+      const y=
+        ty*TILE-camera.y;
+
+      if(!jx4Visible(x,y)){
+        continue;
+      }
+
+      if((tx+ty)%3===0){
+
+        jx4Line(
+          x,
+          y+TILE-2,
+          x+TILE,
+          y+TILE-2,
+          "rgba(89,103,110,.15)"
+        );
+
+      }
+
+    }
+
+  }
+
+}
+
+
+// ======================================================
+// LAKE : 兴凯湖
+// ======================================================
+
+function jx4LakeGround(time){
+
+  const map=jx4Map();
+
+  for(let ty=0;ty<map.grid.length;ty++){
+
+    for(let tx=0;tx<map.grid[0].length;tx++){
+
+      if(map.grid[ty][tx]!==T.WATER){
+        continue;
+      }
+
+      const x=
+        tx*TILE-camera.x;
+
+      const y=
+        ty*TILE-camera.y;
+
+      if(!jx4Visible(x,y)){
+        continue;
+      }
+
+      const seed=
+        jx4Hash(tx,ty,41);
+
+
+      // 氷の筋
+
+      if(seed>.73){
+
+        jx4Line(
+          x+3,
+          y+10,
+          x+19,
+          y+8,
+          "rgba(237,248,249,.35)"
+        );
+
+      }
+
+
+      if(seed<.13){
+
+        jx4Line(
+          x+13,
+          y+27,
+          x+29,
+          y+18,
+          "rgba(83,136,153,.25)"
+        );
+
+      }
+
+    }
+
+  }
+
+}
+
+
+// ======================================================
+// BUILDINGS
+// ======================================================
+
+drawBuildings=function(){
+
+  const map=jx4Map();
+
+  if(!jx4Outdoor()){
+
+    JX4_originalDrawBuildings();
+
+    return;
+  }
+
+  if(!map.buildings){
     return;
   }
 
 
-  ctx.save();
+  for(const b of map.buildings){
 
-  ctx.globalCompositeOperation=
-    "screen";
+    const x=
+      b.x*TILE-camera.x;
 
+    const y=
+      b.y*TILE-camera.y;
+
+    const w=
+      b.w*TILE;
+
+    const h=
+      b.h*TILE;
+
+
+    if(!jx4Visible(x,y,w,h)){
+      continue;
+    }
+
+
+    if(currentMapId==="food"){
+
+      jx4DrawCityBuilding(
+        b,x,y,w,h
+      );
+
+    }
+
+
+    else if(currentMapId==="market"){
+
+      jx4DrawMarketBuilding(
+        b,x,y,w,h
+      );
+
+    }
+
+
+    else if(currentMapId==="hotel"){
+
+      jx4DrawStationBuilding(
+        b,x,y,w,h
+      );
+
+    }
+
+
+    else if(currentMapId==="lake"){
+
+      jx4DrawLakeBuilding(
+        b,x,y,w,h
+      );
+
+    }
+
+  }
+
+};
+
+
+// ======================================================
+// COMMON BUILDING
+// ======================================================
+
+function jx4BuildingShell(
+  b,x,y,w,h,
+  options={}
+){
+
+  const body=
+    options.body||
+    "#6d6b68";
+
+  const lower=
+    options.lower||
+    "#4f5050";
+
+  const trim=
+    options.trim||
+    "#85817b";
+
+
+  // shadow
+
+  jx4Rect(
+    x+8,
+    y+12,
+    w,
+    h+6,
+    "rgba(34,43,48,.22)"
+  );
+
+
+  // wall
+
+  jx4Rect(
+    x+3,
+    y+12,
+    w-6,
+    h-12,
+    body
+  );
+
+
+  // lower floor
+
+  jx4Rect(
+    x+5,
+    y+h*.58,
+    w-10,
+    h*.42-4,
+    lower
+  );
+
+
+  // flat roof
+
+  jx4Rect(
+    x-2,
+    y+6,
+    w+4,
+    10,
+    "#4e5456"
+  );
+
+  jx4Rect(
+    x,
+    y+4,
+    w,
+    6,
+    "#d7ddda"
+  );
+
+  jx4Rect(
+    x+5,
+    y+2,
+    w-10,
+    5,
+    "#eef1ed"
+  );
+
+
+  // snow lip
+
+  jx4Rect(
+    x+2,
+    y+7,
+    w-4,
+    3,
+    "rgba(246,248,245,.90)"
+  );
+
+
+  // floors/windows
+
+  const floors=
+    Math.max(
+      1,
+      Math.floor(
+        (h-50)/44
+      )
+    );
+
+  for(let row=0;row<floors;row++){
+
+    const wy=
+      y+26+row*43;
+
+    for(
+      let wx=x+17;
+      wx<x+w-25;
+      wx+=43
+    ){
+
+      jx4Rect(
+        wx,
+        wy,
+        21,
+        18,
+        "#39484f"
+      );
+
+      jx4Rect(
+        wx+2,
+        wy+2,
+        8,
+        6,
+        "rgba(174,199,202,.25)"
+      );
+
+      jx4Line(
+        wx+10,
+        wy,
+        wx+10,
+        wy+18,
+        "rgba(16,27,31,.55)"
+      );
+
+    }
+
+  }
+
+
+  // pipes
+
+  if(w>190){
+
+    jx4Rect(
+      x+w-24,
+      y+20,
+      4,
+      h-36,
+      "#565c5d"
+    );
+
+    jx4Rect(
+      x+w-23,
+      y+21,
+      1,
+      h-38,
+      "#929696"
+    );
+
+  }
+
+
+  // AC units
+
+  if(w>220){
+
+    for(let ax=x+65;ax<x+w-45;ax+=130){
+
+      jx4Rect(
+        ax,
+        y+55,
+        24,
+        13,
+        "#92999a"
+      );
+
+      jx4Line(
+        ax+4,
+        y+60,
+        ax+20,
+        y+60,
+        "#596264"
+      );
+
+    }
+
+  }
+
+
+  jx4ShopFront(
+    b,x,y,w,h,
+    trim
+  );
+
+}
+
+
+// ======================================================
+// SHOP FRONT
+// ======================================================
+
+function jx4ShopFront(
+  b,x,y,w,h,
+  trim
+){
+
+  const doorX=
+    b.doorX!==undefined
+      ? b.doorX*TILE-camera.x
+      : x+w/2;
+
+
+  // fascia
+
+  jx4Rect(
+    x+9,
+    y+h-47,
+    w-18,
+    25,
+    "#394043"
+  );
+
+  jx4Rect(
+    x+10,
+    y+h-46,
+    w-20,
+    3,
+    trim
+  );
+
+
+  // windows
+
+  const leftWidth=
+    Math.max(
+      22,
+      doorX-(x+16)-20
+    );
+
+  const rightStart=
+    doorX+20;
+
+  const rightWidth=
+    Math.max(
+      22,
+      x+w-16-rightStart
+    );
+
+
+  if(leftWidth>25){
+
+    jx4Rect(
+      x+16,
+      y+h-39,
+      leftWidth,
+      22,
+      "#26383e"
+    );
+
+  }
+
+
+  if(rightWidth>25){
+
+    jx4Rect(
+      rightStart,
+      y+h-39,
+      rightWidth,
+      22,
+      "#26383e"
+    );
+
+  }
+
+
+  // door
+
+  jx4Rect(
+    doorX-13,
+    y+h-39,
+    26,
+    39,
+    "#242d30"
+  );
+
+  jx4Rect(
+    doorX-9,
+    y+h-34,
+    18,
+    22,
+    "#3e555b"
+  );
+
+  jx4Rect(
+    doorX+6,
+    y+h-20,
+    3,
+    3,
+    "#d3c595"
+  );
+
+
+  // sign
+
+  const signText=
+    b.name||"商店";
+
+  const signW=
+    Math.min(
+      w-34,
+      Math.max(
+        92,
+        signText.length*17+30
+      )
+    );
+
+  jx4Rect(
+    x+w/2-signW/2,
+    y+h-68,
+    signW,
+    24,
+    "#314247"
+  );
+
+  jx4Rect(
+    x+w/2-signW/2,
+    y+h-68,
+    signW,
+    2,
+    "#aab7b7"
+  );
+
+  ctx.fillStyle="#f2eee2";
+  ctx.font="bold 13px sans-serif";
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+
+  ctx.fillText(
+    signText,
+    x+w/2,
+    y+h-56
+  );
+
+}
+
+
+// ======================================================
+// FOOD BUILDINGS
+// ======================================================
+
+function jx4DrawCityBuilding(
+  b,x,y,w,h
+){
+
+  const name=b.name||"";
+
+
+  if(
+    b.style==="coldNoodle" ||
+    name.includes("冷面")
+  ){
+
+    jx4BuildingShell(
+      b,x,y,w,h,
+      {
+        body:"#746f69",
+        lower:"#5a5049",
+        trim:"#b94e3f"
+      }
+    );
+
+    jx4Rect(
+      x+18,
+      y+h-95,
+      Math.min(w-36,180),
+      26,
+      "#9b332c"
+    );
+
+    ctx.fillStyle="#fff0d7";
+    ctx.font="bold 15px sans-serif";
+    ctx.textAlign="center";
+
+    ctx.fillText(
+      "鸡西大冷面",
+      x+Math.min(w/2,108),
+      y+h-77
+    );
+
+    return;
+  }
+
+
+  if(
+    b.style==="supermarket" ||
+    name.includes("超市")
+  ){
+
+    jx4BuildingShell(
+      b,x,y,w,h,
+      {
+        body:"#777a76",
+        lower:"#5b6666",
+        trim:"#3f7872"
+      }
+    );
+
+    return;
+  }
+
+
+  if(
+    b.style==="pharmacy" ||
+    name.includes("药房")
+  ){
+
+    jx4BuildingShell(
+      b,x,y,w,h,
+      {
+        body:"#777773",
+        lower:"#5a6260",
+        trim:"#3e8a6b"
+      }
+    );
+
+    return;
+  }
+
+
+  if(
+    b.style==="phoneShop"
+  ){
+
+    jx4BuildingShell(
+      b,x,y,w,h,
+      {
+        body:"#6c706f",
+        lower:"#4c5559",
+        trim:"#477c91"
+      }
+    );
+
+    return;
+  }
+
+
+  jx4BuildingShell(
+    b,x,y,w,h,
+    {
+      body:"#716d67",
+      lower:"#55514d",
+      trim:"#8a6b55"
+    }
+  );
+
+}
+
+
+// ======================================================
+// MARKET BUILDINGS
+// ======================================================
+
+function jx4DrawMarketBuilding(
+  b,x,y,w,h
+){
+
+  // 南山早市周辺は
+  // 中心街より低層・雑多に見せる
+
+  const seed=
+    jx4Hash(
+      b.x,
+      b.y,
+      33
+    );
+
+  const body=
+    seed>.5
+      ? "#746e65"
+      : "#6b706c";
+
+  const lower=
+    seed>.5
+      ? "#554b44"
+      : "#505957";
+
+
+  jx4BuildingShell(
+    b,x,y,w,h,
+    {
+      body,
+      lower,
+      trim:"#8b6e54"
+    }
+  );
+
+
+  // 外壁の配管
+
+  if(w>120){
+
+    jx4Rect(
+      x+20,
+      y+18,
+      3,
+      Math.max(20,h-72),
+      "#515858"
+    );
+
+  }
+
+
+  // 店先の雪かき跡
+
+  jx4Rect(
+    x+12,
+    y+h+2,
+    w-24,
+    5,
+    "rgba(230,235,231,.35)"
+  );
+
+}
+
+
+// ======================================================
+// STATION BUILDINGS
+// ======================================================
+
+function jx4DrawStationBuilding(
+  b,x,y,w,h
+){
+
+  const name=b.name||"";
+
+
+  if(
+    name.includes("鸡西站") ||
+    b.style==="station"
+  ){
+
+    jx4DrawRailwayStation(
+      b,x,y,w,h
+    );
+
+    return;
+  }
+
+
+  if(
+    b.type==="hotel" ||
+    name.includes("宾馆") ||
+    name.includes("旅馆")
+  ){
+
+    jx4BuildingShell(
+      b,x,y,w,h,
+      {
+        body:"#777672",
+        lower:"#4f5657",
+        trim:"#8b694b"
+      }
+    );
+
+    return;
+  }
+
+
+  jx4BuildingShell(
+    b,x,y,w,h,
+    {
+      body:"#686d6e",
+      lower:"#4c5254",
+      trim:"#727c7e"
+    }
+  );
+
+}
+
+
+// ======================================================
+// RAILWAY STATION
+// ======================================================
+
+function jx4DrawRailwayStation(
+  b,x,y,w,h
+){
+
+  // large station body
+
+  jx4Rect(
+    x+6,
+    y+24,
+    w-12,
+    h-24,
+    "#777a78"
+  );
+
+
+  // central raised section
+
+  const cw=
+    Math.min(
+      w*.42,
+      280
+    );
+
+  const cx=
+    x+w/2-cw/2;
+
+  jx4Rect(
+    cx,
+    y+4,
+    cw,
+    h-4,
+    "#858582"
+  );
+
+
+  // roof snow
+
+  jx4Rect(
+    x,
+    y+17,
+    w,
+    10,
+    "#dfe5e2"
+  );
+
+  jx4Rect(
+    cx-4,
+    y,
+    cw+8,
+    10,
+    "#edf1ee"
+  );
+
+
+  // station windows
+
+  for(let wx=x+25;wx<x+w-30;wx+=48){
+
+    jx4Rect(
+      wx,
+      y+h-72,
+      28,
+      32,
+      "#32484f"
+    );
+
+    jx4Line(
+      wx+14,
+      y+h-72,
+      wx+14,
+      y+h-40,
+      "#18292f"
+    );
+
+  }
+
+
+  // entrance
+
+  jx4Rect(
+    x+w/2-38,
+    y+h-55,
+    76,
+    55,
+    "#293c43"
+  );
+
+  jx4Rect(
+    x+w/2-31,
+    y+h-49,
+    62,
+    40,
+    "#46626a"
+  );
+
+
+  // station sign
+
+  jx4Rect(
+    x+w/2-74,
+    y+19,
+    148,
+    30,
+    "#606461"
+  );
+
+  ctx.fillStyle="#f3f1e8";
+  ctx.font="bold 19px sans-serif";
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+
+  ctx.fillText(
+    "鸡 西 站",
+    x+w/2,
+    y+34
+  );
+
+}
+
+
+// ======================================================
+// LAKE BUILDINGS
+// ======================================================
+
+function jx4DrawLakeBuilding(
+  b,x,y,w,h
+){
+
+  jx4BuildingShell(
+    b,x,y,w,h,
+    {
+      body:"#696b67",
+      lower:"#4e5351",
+      trim:"#6e7f7d"
+    }
+  );
+
+}
+
+
+// ======================================================
+// STALLS
+// ======================================================
+
+drawStalls=function(time){
+
+  const map=jx4Map();
+
+
+  if(!jx4Outdoor()){
+
+    JX4_originalDrawStalls(time);
+
+    return;
+  }
+
+
+  for(
+    let index=0;
+    index<(map.stalls||[]).length;
+    index++
+  ){
+
+    const stall=
+      map.stalls[index];
+
+    const x=
+      stall.x*TILE-camera.x;
+
+    const y=
+      stall.y*TILE-camera.y;
+
+    const w=
+      stall.width*TILE;
+
+
+    if(!jx4Visible(x,y,w,70)){
+      continue;
+    }
+
+
+    if(currentMapId==="market"){
+
+      jx4DrawMorningMarketStall(
+        stall,
+        x,y,w,
+        index,
+        time
+      );
+
+    }
+
+    else{
+
+      jx4DrawWinterFoodStall(
+        stall,
+        x,y,w,
+        index,
+        time
+      );
+
+    }
+
+  }
+
+};
+
+
+// ======================================================
+// MORNING MARKET STALL
+// ======================================================
+
+function jx4DrawMorningMarketStall(
+  stall,
+  x,y,w,
+  index,
+  time
+){
+
+  const even=
+    index%2===0;
+
+
+  // snow behind stall
+
+  jx4Rect(
+    x-5,
+    y+38,
+    w+10,
+    8,
+    "rgba(228,234,231,.40)"
+  );
+
+
+  // poles
+
+  jx4Rect(
+    x+4,
+    y+7,
+    4,
+    37,
+    "#4a4b49"
+  );
+
+  jx4Rect(
+    x+w-8,
+    y+7,
+    4,
+    37,
+    "#4a4b49"
+  );
+
+
+  // simple tarp
+
+  jx4Rect(
+    x,
+    y,
+    w,
+    13,
+    even
+      ? "#526a73"
+      : "#775b4d"
+  );
+
+  jx4Rect(
+    x,
+    y,
+    w,
+    3,
+    "#e7ece8"
+  );
+
+
+  // table
+
+  jx4Rect(
+    x+5,
+    y+27,
+    w-10,
+    13,
+    "#62564a"
+  );
+
+
+  // goods
+
+  for(
+    let gx=x+12;
+    gx<x+w-14;
+    gx+=17
+  ){
+
+    const seed=
+      jx4Hash(
+        Math.floor(gx),
+        index,
+        52
+      );
+
+    jx4Rect(
+      gx,
+      y+22,
+      10,
+      6,
+      seed>.5
+        ? "#8b5d42"
+        : "#69754f"
+    );
+
+  }
+
+
+  // sign
+
+  jx4Rect(
+    x+w/2-34,
+    y+8,
+    68,
+    15,
+    "#ece5d4"
+  );
+
+  ctx.fillStyle="#343331";
+  ctx.font="bold 10px sans-serif";
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+
+  ctx.fillText(
+    stall.sign||"早市",
+    x+w/2,
+    y+15
+  );
+
+
+  if(
+    stall.type==="food" ||
+    stall.type==="shaokao"
+  ){
+
+    jx4Steam(
+      x+w/2,
+      y+24,
+      time,
+      index
+    );
+
+  }
+
+}
+
+
+// ======================================================
+// WINTER FOOD STALL
+// ======================================================
+
+function jx4DrawWinterFoodStall(
+  stall,
+  x,y,w,
+  index,
+  time
+){
+
+  jx4Rect(
+    x+4,
+    y+10,
+    4,
+    31,
+    "#4d4843"
+  );
+
+  jx4Rect(
+    x+w-8,
+    y+10,
+    4,
+    31,
+    "#4d4843"
+  );
+
+
+  jx4Rect(
+    x,
+    y,
+    w,
+    15,
+    "#70483b"
+  );
+
+
+  // snow on awning
+
+  jx4Rect(
+    x,
+    y,
+    w,
+    4,
+    "#e8eeeb"
+  );
+
+
+  jx4Rect(
+    x+6,
+    y+29,
+    w-12,
+    12,
+    "#5b4a3e"
+  );
+
+
+  jx4Rect(
+    x+w/2-37,
+    y+5,
+    74,
+    16,
+    "#394346"
+  );
+
+
+  ctx.fillStyle="#f3eee2";
+  ctx.font="bold 10px sans-serif";
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+
+  ctx.fillText(
+    stall.sign||"小吃",
+    x+w/2,
+    y+13
+  );
+
+
+  jx4Steam(
+    x+w/2,
+    y+27,
+    time,
+    index
+  );
+
+}
+
+
+// ======================================================
+// STEAM
+// ======================================================
+
+function jx4Steam(
+  x,y,
+  time,
+  seed=0
+){
+
+  const t=
+    (
+      time*14+
+      seed*7
+    )%24;
+
+
+  ctx.fillStyle=
+    "rgba(238,242,239,.38)";
+
+
+  jx4Rect(
+    x-8,
+    y-t*.6,
+    3,
+    7,
+    "rgba(238,242,239,.34)"
+  );
+
+  jx4Rect(
+    x+2,
+    y-7-t*.8,
+    3,
+    8,
+    "rgba(238,242,239,.28)"
+  );
+
+  jx4Rect(
+    x+11,
+    y-2-t*.5,
+    2,
+    6,
+    "rgba(238,242,239,.22)"
+  );
+
+}
+
+
+// ======================================================
+// AFTER DRAW
+// ======================================================
+
+draw=function(time){
+
+  /*
+   visuals.js + motion.js + game.js の
+   現在の描画を全部先に実行する。
+  */
+
+  JX4_originalDraw(time);
+
+
+  if(!jx4Outdoor()){
+    return;
+  }
+
+
+  // 遠景
+  jx4DrawAtmosphere(time);
+
+
+  // 地図ごとの追加要素
+
+  if(currentMapId==="food"){
+
+    jx4DrawDowntownDetails(time);
+
+  }
+
+  else if(currentMapId==="market"){
+
+    jx4DrawMarketDetails(time);
+
+  }
+
+  else if(currentMapId==="hotel"){
+
+    jx4DrawStationDetails(time);
+
+  }
+
+  else if(currentMapId==="lake"){
+
+    jx4DrawFrozenLakeDetails(time);
+
+  }
+
+
+  // snow is last
+  jx4DrawSnow(time);
+
+  // cold daylight
+  jx4Daylight();
+
+};
+
+
+// ======================================================
+// DOWNTOWN DETAILS
+// ======================================================
+
+function jx4DrawDowntownDetails(time){
+
+  // pedestrian crossing near central avenue
+
+  const worldY=
+    14*TILE;
+
+  const y=
+    worldY-camera.y;
+
+  const cx=
+    31*TILE-camera.x;
+
+
+  if(
+    y>-80 &&
+    y<canvas.height+80
+  ){
+
+    for(let i=-4;i<=4;i++){
+
+      jx4Rect(
+        cx+i*18-6,
+        y,
+        11,
+        38,
+        "rgba(229,233,230,.32)"
+      );
+
+    }
+
+  }
+
+
+  // road-side snowbanks
+
+  const left=
+    25*TILE-camera.x;
+
+  const right=
+    37*TILE-camera.x;
+
+
+  for(let y=-30;y<canvas.height+50;y+=58){
+
+    jx4Rect(
+      left-5,
+      y,
+      7,
+      27,
+      "rgba(235,239,236,.35)"
+    );
+
+    jx4Rect(
+      right-2,
+      y+20,
+      7,
+      28,
+      "rgba(235,239,236,.30)"
+    );
+
+  }
+
+}
+
+
+// ======================================================
+// MARKET DETAILS
+// ======================================================
+
+function jx4DrawMarketDetails(time){
+
+  const map=jx4Map();
+
+
+  // scattered market crates
+
+  for(let i=0;i<14;i++){
+
+    const tx=
+      4+
+      (
+        i*11%
+        Math.max(
+          5,
+          map.grid[0].length-8
+        )
+      );
+
+    const ty=
+      4+
+      (
+        i*7%
+        Math.max(
+          5,
+          map.grid.length-8
+        )
+      );
+
+
+    const x=
+      tx*TILE-camera.x;
+
+    const y=
+      ty*TILE-camera.y;
+
+
+    if(!jx4Visible(x,y)){
+      continue;
+    }
+
+
+    if(
+      map.grid[ty] &&
+      (
+        map.grid[ty][tx]===T.ROAD ||
+        map.grid[ty][tx]===T.PLAZA
+      )
+    ){
+
+      jx4Rect(
+        x+6,
+        y+15,
+        18,
+        12,
+        "#665244"
+      );
+
+      jx4Line(
+        x+7,
+        y+20,
+        x+23,
+        y+20,
+        "#3e342e"
+      );
+
+    }
+
+  }
+
+}
+
+
+// ======================================================
+// STATION DETAILS
+// ======================================================
+
+function jx4DrawStationDetails(time){
+
+  const map=jx4Map();
+
+
+  // platform / station-area sign
+
+  const signX=
+    6*TILE-camera.x;
+
+  const signY=
+    6*TILE-camera.y;
+
+
+  if(
+    signX>-200 &&
+    signX<canvas.width+200 &&
+    signY>-100 &&
+    signY<canvas.height+100
+  ){
+
+    jx4Rect(
+      signX,
+      signY,
+      118,
+      31,
+      "#455054"
+    );
+
+    jx4Rect(
+      signX+4,
+      signY+4,
+      110,
+      23,
+      "#d7dfdc"
+    );
+
+    ctx.fillStyle="#31383a";
+    ctx.font="bold 13px sans-serif";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+
+    ctx.fillText(
+      "鸡西站前",
+      signX+59,
+      signY+15
+    );
+
+  }
+
+
+  // coal-city industrial silhouettes
+  // distant only, no collision
+
+  const baseY=
+    2*TILE-camera.y;
+
+  for(let i=0;i<4;i++){
+
+    const x=
+      (
+        10+i*15
+      )*TILE-camera.x;
+
+
+    if(
+      x<-100 ||
+      x>canvas.width+100
+    ){
+      continue;
+    }
+
+
+    jx4Rect(
+      x,
+      baseY,
+      22,
+      48+i*6,
+      "rgba(67,76,78,.24)"
+    );
+
+
+    jx4Rect(
+      x+7,
+      baseY-22,
+      7,
+      24,
+      "rgba(67,76,78,.24)"
+    );
+
+  }
+
+}
+
+
+// ======================================================
+// FROZEN LAKE DETAILS
+// ======================================================
+
+function jx4DrawFrozenLakeDetails(time){
+
+  const map=jx4Map();
+
+
+  // ice fishing holes / markers
+  // only on water tiles
+
+  for(let i=0;i<11;i++){
+
+    const tx=
+      3+
+      (
+        i*7%
+        Math.max(
+          4,
+          map.grid[0].length-6
+        )
+      );
+
+    const ty=
+      4+
+      (
+        i*11%
+        Math.max(
+          4,
+          map.grid.length-8
+        )
+      );
+
+
+    if(
+      !map.grid[ty] ||
+      map.grid[ty][tx]!==T.WATER
+    ){
+      continue;
+    }
+
+
+    const x=
+      tx*TILE-camera.x+16;
+
+    const y=
+      ty*TILE-camera.y+16;
+
+
+    if(
+      x<-50 ||
+      x>canvas.width+50 ||
+      y<-50 ||
+      y>canvas.height+50
+    ){
+      continue;
+    }
+
+
+    ctx.fillStyle=
+      "rgba(64,108,124,.40)";
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+      x,y,
+      8,4,
+      0,
+      0,
+      Math.PI*2
+    );
+
+    ctx.fill();
+
+
+    ctx.strokeStyle=
+      "rgba(235,245,246,.40)";
+
+    ctx.stroke();
+
+  }
+
+
+  // reed clusters near shore
+
+  for(let i=0;i<20;i++){
+
+    const worldX=
+      17*TILE+
+      (i%5)*19;
+
+    const worldY=
+      3*TILE+
+      Math.floor(i/5)*95;
+
+
+    const x=
+      worldX-camera.x;
+
+    const y=
+      worldY-camera.y;
+
+
+    if(
+      x<-40 ||
+      x>canvas.width+40 ||
+      y<-40 ||
+      y>canvas.height+40
+    ){
+      continue;
+    }
+
+
+    const sway=
+      Math.sin(
+        time*1.2+i
+      )*1.5;
+
+
+    jx4Line(
+      x,
+      y+22,
+      x+sway,
+      y,
+      "rgba(108,92,64,.65)"
+    );
+
+    jx4Line(
+      x+5,
+      y+22,
+      x+7+sway,
+      y+5,
+      "rgba(108,92,64,.52)"
+    );
+
+  }
+
+}
+
+
+// ======================================================
+// ATMOSPHERE
+// ======================================================
+
+function jx4DrawAtmosphere(time){
+
+  // cold haze
 
   const g=
     ctx.createLinearGradient(
@@ -1988,204 +2182,121 @@ function j2Daylight(){
       0,canvas.height
     );
 
-
   g.addColorStop(
     0,
-    "rgba(172,195,209,.33)"
+    "rgba(209,225,230,.065)"
   );
-
 
   g.addColorStop(
     .5,
-    "rgba(150,173,187,.24)"
+    "rgba(191,211,216,.025)"
   );
-
 
   g.addColorStop(
     1,
-    "rgba(116,139,151,.16)"
+    "rgba(238,242,238,.018)"
   );
-
 
   ctx.fillStyle=g;
 
-
   ctx.fillRect(
-    0,
-    0,
+    0,0,
     canvas.width,
     canvas.height
   );
 
-
-  ctx.restore();
-
 }
 
 
-// ============================================================
-// COLD WIND
-// ============================================================
+// ======================================================
+// SNOW
+// ======================================================
 
-function j2Wind(time){
+function jx4DrawSnow(time){
 
-  if(!j2Outdoor()){
-    return;
-  }
-
-
-  ctx.save();
-
-  ctx.globalAlpha=.07;
-
-
-  for(let i=0;i<6;i++){
-
-    const y=
-      (
-        i*103+
-        time*5
-      )%
-      canvas.height;
-
-
-    const x=
-      (
-        time*14+
-        i*167
-      )%
-      (
-        canvas.width+200
-      )-
-      200;
-
-
-    j2line(
-      x,
-      y,
-      x+75,
-      y-5,
-      "#edf5f7",
-      2
-    );
-
-  }
-
-
-  ctx.restore();
-
-}
-
-
-// ============================================================
-// FALLING SNOW
-// ============================================================
-
-function j2Snowfall(time){
-
-  if(!j2Outdoor()){
-    return;
-  }
-
-
-  const map=j2map();
-
-
-  const strength=
-    map.jixiWinter?.snowStrength ?? .7;
-
-
-  const count=
-    Math.floor(
-      J2_SNOW.length*
-      Math.min(
-        1,
-        strength
-      )
-    );
+  const amount=
+    currentMapId==="lake"
+      ? 115
+      : currentMapId==="market"
+      ? 95
+      : 80;
 
 
   ctx.save();
 
 
-  for(let i=0;i<count;i++){
+  for(let i=0;i<amount;i++){
 
-    const s=
-      J2_SNOW[i];
+    const seed1=
+      jx4Hash(
+        i,
+        17,
+        71
+      );
 
+    const seed2=
+      jx4Hash(
+        i,
+        41,
+        82
+      );
 
-    const y=
+    const speed=
+      18+
+      seed1*31;
+
+    const drift=
+      Math.sin(
+        time*.8+
+        i*.73
+      )*
       (
-        s.y+
-        time*
-        s.speed*
-        (
-          .55+
-          s.layer*.8
-        )
-      )%
-      (
-        canvas.height+40
-      )-
-      20;
-
-
-    const x=
-      (
-        s.x+
-        Math.sin(
-          time*.7+s.phase
-        )*
-        s.drift+
-        time*
-        (
-          4+
-          s.layer*9
-        )
-      )%
-      (
-        canvas.width+40
-      )-
-      20;
-
-
-    const size=
-      s.size*
-      (
-        .65+
-        s.layer*.65
+        8+
+        seed2*15
       );
 
 
-    ctx.globalAlpha=
-      .42+
-      s.layer*.46;
+    const x=
+      (
+        seed1*
+        (canvas.width+100)+
+        drift+
+        time*
+        (4+seed2*5)
+      )%
+      (canvas.width+100)-50;
+
+
+    const y=
+      (
+        seed2*
+        (canvas.height+80)+
+        time*speed
+      )%
+      (canvas.height+80)-40;
+
+
+    const size=
+      seed1>.84
+        ? 3
+        : seed1>.45
+        ? 2
+        : 1;
 
 
     ctx.fillStyle=
-      s.layer>.72
-        ? "#ffffff"
-        : "#eaf3f6";
+      size===3
+        ? "rgba(255,255,252,.78)"
+        : size===2
+        ? "rgba(249,252,250,.65)"
+        : "rgba(244,248,247,.52)";
 
 
     ctx.fillRect(
       Math.floor(x),
       Math.floor(y),
-      Math.max(
-        1,
-        Math.floor(size)
-      ),
-      Math.max(
-        1,
-        Math.floor(
-          size*
-          (
-            s.layer>.72
-              ? 1.7
-              : 1
-          )
-        )
-      )
+      size,
+      size
     );
 
   }
@@ -2196,26 +2307,42 @@ function j2Snowfall(time){
 }
 
 
-// ============================================================
-// INDOOR WARMTH
-// ============================================================
+// ======================================================
+// DAYLIGHT
+// ======================================================
 
-function j2IndoorWarmth(){
-
-  if(!j2Indoor()){
-    return;
-  }
-
+function jx4Daylight(){
 
   ctx.save();
 
-  ctx.fillStyle=
-    "rgba(255,176,95,.028)";
+  ctx.globalCompositeOperation=
+    "screen";
+
+
+  if(currentMapId==="lake"){
+
+    ctx.fillStyle=
+      "rgba(177,210,221,.075)";
+
+  }
+
+  else if(currentMapId==="market"){
+
+    ctx.fillStyle=
+      "rgba(213,222,216,.060)";
+
+  }
+
+  else{
+
+    ctx.fillStyle=
+      "rgba(199,216,219,.055)";
+
+  }
 
 
   ctx.fillRect(
-    0,
-    0,
+    0,0,
     canvas.width,
     canvas.height
   );
@@ -2226,113 +2353,60 @@ function j2IndoorWarmth(){
 }
 
 
-// ============================================================
-// FINAL DRAW
-// ============================================================
-
-draw=function(time){
-
-  /*
-  既存ゲーム＋visuals＋motion
-  */
-
-  JXV2_draw(time);
-
-
-  if(j2Outdoor()){
-
-    /*
-    昼光
-    */
-
-    j2Daylight();
-
-
-    /*
-    集合住宅・店舗の暖房煙
-    */
-
-    j2HeatingSmoke(time);
-
-
-    /*
-    寒風
-    */
-
-    j2Wind(time);
-
-
-    /*
-    最前面の降雪
-    */
-
-    j2Snowfall(time);
-
-  }
-
-
-  else if(j2Indoor()){
-
-    j2IndoorWarmth();
-
-  }
-
-};
-
-
-// ============================================================
+// ======================================================
 // UI
-// ============================================================
+// ======================================================
 
-function j2UpdateUI(){
+function jx4UpdateUI(){
 
-  const title=
-    document.querySelector(
-      ".game-header h1"
-    );
+  try{
+
+    document.title=
+      "鸡西探索录 - 黑龙江的冬";
 
 
-  if(title){
+    const eyebrow=
+      document.querySelector(
+        ".eyebrow"
+      );
 
-    title.textContent=
-      "鸡西・冬日";
+    if(eyebrow){
+
+      eyebrow.textContent=
+        "鸡西探索录 · JIXI EXPLORER";
+
+    }
+
+
+    const footer=
+      document.querySelector(
+        ".footer-location"
+      );
+
+    if(footer){
+
+      footer.textContent=
+        "中国 · 黑龙江省 · 鸡西市";
+
+    }
 
   }
 
+  catch(error){
 
-  const eyebrow=
-    document.querySelector(
-      ".eyebrow"
+    console.warn(
+      "Jixi UI update skipped:",
+      error
     );
-
-
-  if(eyebrow){
-
-    eyebrow.textContent=
-      "鸡西探索录 · JIXI EXPLORER";
-
-  }
-
-
-  const footer=
-    document.querySelector(
-      ".footer-location"
-    );
-
-
-  if(footer){
-
-    footer.textContent=
-      "中国 · 黑龙江省 · 鸡西市";
 
   }
 
 }
 
 
-j2UpdateUI();
+jx4UpdateUI();
 
 
 console.log(
-  "鸡西探索录 Winter Visuals Ver.2 loaded"
+  "鸡西探索录 Jixi Visual System Ver.4 loaded"
 );
